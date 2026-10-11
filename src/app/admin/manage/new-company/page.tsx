@@ -6,6 +6,7 @@ import { ManageSubsectionShell } from "../_components/ManageSubsectionShell";
 import { CreateCompanyForm } from "../_components/CreateCompanyForm";
 import { ArchivableList } from "../_components/ArchivableList";
 import { NewEntityWithList } from "../_components/NewEntityWithList";
+import { CompanyImportPanel } from "../_components/CompanyImportPanel";
 import { archiveCompanyAction } from "../../actions";
 
 export default async function NewCompanyPage() {
@@ -26,6 +27,7 @@ export default async function NewCompanyPage() {
 
   return (
     <ManageSubsectionShell titleKey="createCompanyTitle">
+      <CompanyImportPanel />
       <NewEntityWithList listTitleKey="companiesListTitle">
         <CreateCompanyForm />
         <ArchivableList

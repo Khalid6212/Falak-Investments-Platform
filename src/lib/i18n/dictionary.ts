@@ -284,6 +284,21 @@ export interface Dictionary {
       editAction: string;
       saveChangesLabel: string;
       emailAgainAction: string;
+      importStartupsAction: string;
+      importTitle: string;
+      importIntro: string;
+      importTemplateAction: string;
+      importFileLabel: string;
+      importCheckAction: string;
+      importRunAction: string;
+      importReadyCount: string;
+      importDoneMessage: string;
+      importSkippedNote: string;
+      importRowColumn: string;
+      importStatusColumn: string;
+      importReadyLabel: string;
+      importAddedLabel: string;
+      importCloseAction: string;
       allDepartmentsOption: string;
       requestDetailTitle: string;
       requestEntryTitle: string;
@@ -973,6 +988,21 @@ export const en = {
       editAction: "Edit",
       saveChangesLabel: "Save Changes",
       emailAgainAction: "Email again",
+      importStartupsAction: "Import from Excel",
+      importTitle: "Import startups from Excel",
+      importIntro: "Add many startups at once: download the template, fill in one startup per row, then upload it and click Check file. Every row is checked with the same rules as the form below, and nothing is added until you click Import.",
+      importTemplateAction: "Download template",
+      importFileLabel: "Excel file (.xlsx)",
+      importCheckAction: "Check file",
+      importRunAction: "Import {count} startup(s)",
+      importReadyCount: "{ready} of {total} rows are ready to import. Rows with problems are skipped.",
+      importDoneMessage: "Imported {count} startup(s).",
+      importSkippedNote: "Rows with problems were skipped: fix them in the file and import it again (startups already added are skipped automatically).",
+      importRowColumn: "Row",
+      importStatusColumn: "Result",
+      importReadyLabel: "Ready",
+      importAddedLabel: "Added",
+      importCloseAction: "Close",
       allDepartmentsOption: "Both departments",
       requestDetailTitle: "Report request",
       requestEntryTitle: "Enter report data",
@@ -1668,6 +1698,21 @@ export const ar = {
       editAction: "تعديل",
       saveChangesLabel: "حفظ التغييرات",
       emailAgainAction: "إرسال البريد مجدداً",
+      importStartupsAction: "استيراد من Excel",
+      importTitle: "استيراد الشركات الناشئة من Excel",
+      importIntro: "أضف عدة شركات ناشئة دفعة واحدة: نزّل القالب، واملأ شركة واحدة في كل صف، ثم ارفعه واضغط «فحص الملف». يُفحص كل صف بنفس قواعد النموذج أدناه، ولا يُضاف شيء حتى تضغط «استيراد».",
+      importTemplateAction: "تنزيل القالب",
+      importFileLabel: "ملف Excel (.xlsx)",
+      importCheckAction: "فحص الملف",
+      importRunAction: "استيراد {count} شركة ناشئة",
+      importReadyCount: "{ready} من {total} صفاً جاهزة للاستيراد. تُتخطى الصفوف التي بها مشكلات.",
+      importDoneMessage: "تم استيراد {count} شركة ناشئة.",
+      importSkippedNote: "تم تخطي الصفوف التي بها مشكلات: صحّحها في الملف واستورده مجدداً (تُتخطى الشركات المضافة تلقائياً).",
+      importRowColumn: "الصف",
+      importStatusColumn: "النتيجة",
+      importReadyLabel: "جاهز",
+      importAddedLabel: "أُضيفت",
+      importCloseAction: "إغلاق",
       allDepartmentsOption: "كلا القسمين",
       requestDetailTitle: "طلب التقرير",
       requestEntryTitle: "إدخال بيانات التقرير",
