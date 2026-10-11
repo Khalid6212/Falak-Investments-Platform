@@ -47,7 +47,7 @@ interface NavItemConfig {
 
 const NAV_ITEMS: NavItemConfig[] = [
   { key: "portfolioDashboard", href: "/admin", Icon: LayoutDashboard, requires: "isManagementOrAdmin" },
-  { key: "companyList", href: "/admin/companies", Icon: ListChecks, requires: "isManagementOrAdmin" },
+  { key: "companyList", href: "/admin/companies", Icon: ListChecks, requires: "isFalakStaff" },
   { key: "managePortfolio", href: "/admin/manage", Icon: Settings2, requires: "isFalakStaff" },
   { key: "investorDashboard", href: "/investor", Icon: PieChart, requires: "isInvestorMember" },
   { key: "vehicleDashboard", href: "/vehicle", Icon: Landmark, requires: "isFalakStaff" },

@@ -56,12 +56,9 @@ function toDateOnly(date: Date): string {
  * open, unsubmitted cycle has nothing to report yet).
  */
 export async function getCompanyListData(): Promise<CompanyListRow[]> {
-  // Same FALAK_MANAGEMENT floor as the Portfolio Dashboard -- Company
-  // List is the other cross-company aggregate view restricted to
-  // Admin/Management only. Management itself is department-scoped
-  // (unlike Admin), so a Management user here only sees companies in
-  // their own department.
-  const scope = await requireFalakRoleWithDepartmentScope("FALAK_MANAGEMENT");
+  // Every Falak staff role (Investment Professionals included), each
+  // limited to their own department; Admin sees all.
+  const scope = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
 
   const companies = await db.company.findMany({
     where: { archivedAt: null, ...(scope.departments ? { department: { in: scope.departments } } : {}) },

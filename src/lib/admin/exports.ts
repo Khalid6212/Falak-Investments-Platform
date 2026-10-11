@@ -47,8 +47,10 @@ const toDate = (d: Date | null | undefined) => (d ? new Date(d.toISOString().sli
 const num = (d: { toNumber(): number } | null | undefined) => (d ? d.toNumber() : null);
 const dept = (d: Department) => en.departments[d];
 
-async function scope() {
-  const { departments } = await requireFalakRoleWithDepartmentScope("FALAK_MANAGEMENT");
+// The startups export matches the Company List (every staff role); the
+// portfolio export stays Management/Admin, like the Portfolio Dashboard.
+async function scope(role: "FALAK_OPERATIONS" | "FALAK_MANAGEMENT") {
+  const { departments } = await requireFalakRoleWithDepartmentScope(role);
   return departments ? { department: { in: departments } } : {};
 }
 
@@ -176,7 +178,7 @@ function newBook(): ExcelJS.Workbook {
 }
 
 export async function buildCompaniesWorkbook(): Promise<Buffer> {
-  return writeCompaniesWorkbook(await scope());
+  return writeCompaniesWorkbook(await scope("FALAK_OPERATIONS"));
 }
 
 /** Builds the file for an already-checked department filter ({} = all). */
@@ -187,7 +189,7 @@ export async function writeCompaniesWorkbook(deptWhere: object): Promise<Buffer>
 }
 
 export async function buildPortfolioWorkbook(): Promise<Buffer> {
-  return writePortfolioWorkbook(await scope());
+  return writePortfolioWorkbook(await scope("FALAK_MANAGEMENT"));
 }
 
 /** Builds the file for an already-checked department filter ({} = all). */
