@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@/components/forms/useForm";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
@@ -59,13 +60,13 @@ function StaffUserRowItem({ row }: { row: StaffUserRow }) {
         </form>
       </td>
       <td className="py-2 align-top">
-        <form action={revokeStaffRoleAction}>
+        <RefreshingForm action={revokeStaffRoleAction}>
           <input type="hidden" name="userId" value={row.id} />
           <input type="hidden" name="role" value={row.role} />
           <Button type="submit" variant="outline" size="xs">
             {t.admin.manage.revokeAction}
           </Button>
-        </form>
+        </RefreshingForm>
       </td>
     </tr>
   );

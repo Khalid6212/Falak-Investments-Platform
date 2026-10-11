@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 
 interface RevokeButtonProps {
   action: (formData: FormData) => Promise<void>;
@@ -14,7 +15,7 @@ interface RevokeButtonProps {
 // access on their next page load, so it shouldn't happen on a stray click.
 export function RevokeButton({ action, fieldName, id, label, confirmMessage }: RevokeButtonProps) {
   return (
-    <form
+    <RefreshingForm
       action={action}
       onSubmit={(e) => {
         if (!window.confirm(confirmMessage)) e.preventDefault();
@@ -24,6 +25,6 @@ export function RevokeButton({ action, fieldName, id, label, confirmMessage }: R
       <Button type="submit" variant="outline" size="xs">
         {label}
       </Button>
-    </form>
+    </RefreshingForm>
   );
 }

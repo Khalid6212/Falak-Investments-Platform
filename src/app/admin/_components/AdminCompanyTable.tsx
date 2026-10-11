@@ -6,6 +6,7 @@ import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/Table";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Num } from "@/components/ui/Num";
 import { Button } from "@/components/ui/Button";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { archiveCompanyAction } from "../actions";
@@ -146,12 +147,12 @@ export function AdminCompanyTable({ companies, period, vehicles, vehicleLinks, o
                         {t.reviewWorkspace.reviewAction}
                       </Button>
                     ) : company.archivedAt ? null : (
-                      <form action={archiveCompanyAction}>
+                      <RefreshingForm action={archiveCompanyAction}>
                         <input type="hidden" name="companyId" value={company.id} />
                         <Button type="submit" variant="outline" size="xs">
                           {t.admin.manage.archiveAction}
                         </Button>
-                      </form>
+                      </RefreshingForm>
                     )}
                   </Td>
                 </Tr>

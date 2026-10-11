@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { approveAccessRequestAction } from "../actions";
 import type { AccessRequestedRole } from "@/generated/prisma/client";
@@ -30,7 +31,7 @@ export function ApproveRequestForm({ requestId, requestedRole, organizationName 
   const [grant, setGrant] = useState<Grant>(defaultGrantFor(requestedRole));
 
   return (
-    <form action={approveAccessRequestAction} className="flex flex-wrap items-end gap-2">
+    <RefreshingForm action={approveAccessRequestAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="requestId" value={requestId} />
       <div className="flex flex-col gap-1">
         <label htmlFor={`grant-${requestId}`} className="text-xs font-medium text-muted-foreground">
@@ -71,6 +72,6 @@ export function ApproveRequestForm({ requestId, requestedRole, organizationName 
       <Button type="submit" size="xs">
         {t.access.approveAction}
       </Button>
-    </form>
+    </RefreshingForm>
   );
 }

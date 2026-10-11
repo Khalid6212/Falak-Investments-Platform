@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { Button } from "@/components/ui/Button";
 import { useListView, byText, byValue } from "@/components/lists/useListView";
@@ -61,12 +62,12 @@ export function ArchivableList({
                   {t.admin.manage.editAction}
                 </Link>
               ) : null}
-              <form action={action}>
+              <RefreshingForm action={action}>
                 <input type="hidden" name={fieldName} value={item.id} />
                 <Button type="submit" variant="outline" size="xs">
                   {t.admin.manage.archiveAction}
                 </Button>
-              </form>
+              </RefreshingForm>
             </div>
           </li>
         ))}

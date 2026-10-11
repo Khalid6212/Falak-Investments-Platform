@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RefreshingForm } from "@/components/forms/RefreshingForm";
 import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Num } from "@/components/ui/Num";
@@ -78,12 +79,12 @@ export function InvestorVehicleAssignmentsTable({ rows }: { rows: InvestorVehicl
                   </div>
                 </Td>
                 <Td>
-                  <form action={unassignInvestorFromVehicleAction}>
+                  <RefreshingForm action={unassignInvestorFromVehicleAction}>
                     <input type="hidden" name="positionId" value={row.id} />
                     <Button type="submit" variant="outline" size="sm">
                       {t.admin.manage.unassignAction}
                     </Button>
-                  </form>
+                  </RefreshingForm>
                 </Td>
               </Tr>
             ))

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import type { ActionState } from "../../actions";
 
@@ -49,10 +50,13 @@ export function useEntityForm(action: (state: ActionState, formData: FormData) =
     initialActionState as EntityFormState
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-  }, [state.submission]);
+    // A successful save changes what lists on the page show.
+    if (state.submission && state.success) router.refresh();
+  }, [state.submission, state.success, router]);
 
   return { state, formAction, isPending, formRef, formKey: state.submission ?? 0 };
 }
