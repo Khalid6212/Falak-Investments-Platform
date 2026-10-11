@@ -1,7 +1,10 @@
 import "server-only";
 import { Resend } from "resend";
 
-const FROM_ADDRESS = "Falak Portfolio Platform <noreply@falakinvestments.space>";
+// EMAIL_FROM switches the sender without a code change, e.g.
+// "Falak Investments <noreply@falak.sa>". Its domain must be verified in the
+// Resend account that RESEND_API_KEY belongs to, or every send fails.
+const FROM_ADDRESS = process.env.EMAIL_FROM?.trim() || "Falak Portfolio Platform <noreply@falakinvestments.space>";
 
 let client: Resend | null = null;
 
