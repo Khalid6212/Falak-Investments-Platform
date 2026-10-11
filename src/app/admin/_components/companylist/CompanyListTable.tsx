@@ -72,7 +72,7 @@ export function CompanyListTable({ companies, displayCurrency }: CompanyListTabl
               <Tr key={company.id}>
                 <Td>
                   <Link
-                    href={`/company/${company.slug}`}
+                    href={`/company/${company.slug}/profile`}
                     className="font-medium text-link-foreground underline-offset-2 hover:underline"
                   >
                     {lang === "ar" ? company.nameAr : company.nameEn}

@@ -7,6 +7,7 @@ import type {
   SubmissionStatus,
   NarrativeKind,
   CompanyValuationType,
+  Department,
 } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 import type { CompanyMetricBenchmark } from "@/lib/admin/benchmarking";
@@ -31,6 +32,11 @@ export interface CompanyReportPeriodData {
   submissionId: string | null;
   currentDeadline: string;
   narratives: CompanyReportNarrativeDTO[];
+  /** The reporting template the period was requested with. */
+  templateNameEn: string;
+  templateNameAr: string;
+  /** A published (current) report version exists for this period. */
+  isPublished: boolean;
   // Every submitted metric for this period, Falak-staff AND
   // company-member visible alike (unlike valuation below) -- these are
   // the company's own reported operating numbers, not a fund-controlled
@@ -84,6 +90,7 @@ export interface CompanyReportDTO {
   founderPhone: string | null;
   hqCity: string | null;
   hqCountry: string | null;
+  department: Department;
   archivedAt: string | null;
   periods: Record<string, CompanyReportPeriodData>;
 }
@@ -101,10 +108,24 @@ export interface CompanyValuationPointDTO {
   valuationType: CompanyValuationType;
 }
 
+/** One investment agreement through a vehicle. Falak-staff-only, like valuations. */
+export interface CompanyInvestmentDTO {
+  vehicleId: string;
+  vehicleSlug: string;
+  vehicleNameEn: string;
+  vehicleNameAr: string;
+  signedDate: string;
+  investedAmount: number | null;
+  currency: Currency | null;
+  ownershipPct: number | null;
+}
+
 export interface CompanyReportData {
   company: CompanyReportDTO;
   periods: CompanyReportPeriodOption[];
   linkedVehicles: CompanyReportVehicleDTO[];
   viewerRole: CompanyReportViewerRole;
   valuations: CompanyValuationPointDTO[];
+  /** Always [] for a company member. */
+  investments: CompanyInvestmentDTO[];
 }

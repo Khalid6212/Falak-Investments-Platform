@@ -226,3 +226,44 @@ test("a company-member viewer always gets an empty benchmarks array, and getPort
   assert.deepEqual(result!.company.periods["Q1 2026"].benchmarks, []);
   assert.equal(db.getCompanyFindManyCallCount(), 0, "a company member must never trigger the portfolio-wide benchmark query");
 });
+
+const FUND_LINK = {
+  vehicle: { id: "veh_1", slug: "fund-one", nameEn: "Fund One", nameAr: "الصندوق الأول", type: "Fund", currency: "USD" },
+  agreements: [{ signedDate: new Date("2024-05-01"), investedAmount: 126000, currency: "USD", ownershipPct: null }],
+};
+
+test("profile data: each period carries its template name and whether it was published", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(makeCompanyReportDbStub({ falakRoles: ADMIN_ROLE, companies: [{ ...BASE_COMPANY, cycles: [Q1_CYCLE] }] }));
+  const period = (await getCompanyReportData("tadween-saas"))!.company.periods["Q1 2026"];
+  assert.equal(period.templateNameEn, "Quarterly Report");
+  assert.equal(period.isPublished, false);
+});
+
+test("profile data: Falak staff see investment agreements; the startup's own members never do", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(makeCompanyReportDbStub({ falakRoles: ADMIN_ROLE, companies: [{ ...BASE_COMPANY, vehicleLinks: [FUND_LINK] }] }));
+  const staff = await getCompanyReportData("tadween-saas");
+  assert.deepEqual(staff!.investments, [
+    {
+      vehicleId: "veh_1",
+      vehicleSlug: "fund-one",
+      vehicleNameEn: "Fund One",
+      vehicleNameAr: "الصندوق الأول",
+      signedDate: "2024-05-01",
+      investedAmount: 126000,
+      currency: "USD",
+      ownershipPct: null,
+    },
+  ]);
+
+  setDbStub(
+    makeCompanyReportDbStub({
+      falakRoles: [],
+      companyMemberships: [MEMBER_OF_CO1],
+      companies: [{ ...BASE_COMPANY, vehicleLinks: [FUND_LINK] }],
+    })
+  );
+  const member = await getCompanyReportData("tadween-saas");
+  assert.deepEqual(member!.investments, []);
+});

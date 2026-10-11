@@ -15,6 +15,7 @@ import type {
   CompanyReportVehicleDTO,
   CompanyReportViewerRole,
   CompanyValuationPointDTO,
+  CompanyInvestmentDTO,
 } from "./dto";
 
 function toDateOnly(date: Date): string {
@@ -95,6 +96,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
           periodStart: true,
           periodEnd: true,
           currentDeadline: true,
+          template: { select: { nameEn: true, nameAr: true } },
           submission: {
             select: {
               id: true,
@@ -124,6 +126,11 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
         select: {
           vehicle: {
             select: { id: true, slug: true, nameEn: true, nameAr: true, type: true, currency: true },
+          },
+          agreements: {
+            where: { status: { in: ["Active", "Superseded"] } },
+            orderBy: { signedDate: "asc" },
+            select: { signedDate: true, investedAmount: true, currency: true, ownershipPct: true },
           },
         },
       },
@@ -176,6 +183,9 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
         submissionId: submission?.id ?? null,
         currentDeadline: toDateOnly(cycle.currentDeadline),
         narratives: matchingReport?.versions[0]?.narratives ?? [],
+        templateNameEn: cycle.template.nameEn,
+        templateNameAr: cycle.template.nameAr,
+        isPublished: Boolean(matchingReport?.versions[0]),
         benchmarks,
         metrics,
       };
@@ -203,6 +213,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
     founderPhone: company.founderPhone ?? null,
     hqCity: company.hqCity ?? null,
     hqCountry: company.hqCountry ?? null,
+    department: company.department,
     archivedAt: company.archivedAt?.toISOString() ?? null,
     periods: periodsData,
   };
@@ -213,5 +224,24 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
     valuationType: v.valuationType,
   }));
 
-  return { company: companyDTO, periods, linkedVehicles, viewerRole, valuations };
+  // Investment terms are a fund matter: Falak staff only, like valuations.
+  const investments: CompanyInvestmentDTO[] =
+    viewerRole === "FALAK_STAFF"
+      ? company.ownershipPositions.flatMap((p) =>
+          p.vehicle
+            ? (p.agreements ?? []).map((a) => ({
+                vehicleId: p.vehicle!.id,
+                vehicleSlug: p.vehicle!.slug,
+                vehicleNameEn: p.vehicle!.nameEn,
+                vehicleNameAr: p.vehicle!.nameAr,
+                signedDate: toDateOnly(a.signedDate),
+                investedAmount: a.investedAmount?.toNumber() ?? null,
+                currency: a.currency ?? null,
+                ownershipPct: a.ownershipPct?.toNumber() ?? null,
+              }))
+            : []
+        )
+      : [];
+
+  return { company: companyDTO, periods, linkedVehicles, viewerRole, valuations, investments };
 }

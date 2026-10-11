@@ -1148,6 +1148,7 @@ export interface CompanyReportReportFixture {
 export interface CompanyReportVehicleLinkFixture {
   vehicleArchived?: boolean;
   vehicle: { id: string; slug: string; nameEn: string; nameAr: string; type: string; currency: string };
+  agreements?: { signedDate: Date; investedAmount: number | null; currency: string | null; ownershipPct: number | null }[];
 }
 
 export interface CompanyReportCompanyFixture {
@@ -1270,6 +1271,7 @@ export function makeCompanyReportDbStub(options: {
             periodStart: cy.periodStart,
             periodEnd: cy.periodEnd,
             currentDeadline: cy.currentDeadline,
+            template: { nameEn: "Quarterly Report", nameAr: "التقرير الربعي" },
             submission: cy.submission
               ? {
                   id: cy.submission.id,
@@ -1298,7 +1300,15 @@ export function makeCompanyReportDbStub(options: {
             })),
           ownershipPositions: (c.vehicleLinks ?? [])
             .filter((l) => !l.vehicleArchived)
-            .map((l) => ({ vehicle: l.vehicle })),
+            .map((l) => ({
+              vehicle: l.vehicle,
+              agreements: (l.agreements ?? []).map((a) => ({
+                signedDate: a.signedDate,
+                investedAmount: a.investedAmount === null ? null : { toNumber: () => a.investedAmount },
+                currency: a.currency,
+                ownershipPct: a.ownershipPct === null ? null : { toNumber: () => a.ownershipPct },
+              })),
+            })),
           valuations: (c.valuations ?? []).map((v) => ({
             asOfDate: v.asOfDate,
             valuationAmount: { toNumber: () => v.valuationAmount },

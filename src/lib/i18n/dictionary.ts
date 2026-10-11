@@ -594,6 +594,30 @@ export interface Dictionary {
     title: string;
     description: string;
   };
+  companyProfile: {
+    subtitle: string;
+    openProfileAction: string;
+    editDetailsAction: string;
+    archivedNote: string;
+    tabOverview: string;
+    tabReports: string;
+    tabDashboard: string;
+    statReports: string;
+    statReportsValue: string;
+    statLatestRevenue: string;
+    statTotalInvested: string;
+    statLatestValuation: string;
+    investmentsTitle: string;
+    noInvestments: string;
+    signedColumn: string;
+    amountColumn: string;
+    ownershipColumn: string;
+    reportsTitle: string;
+    noReports: string;
+    templateColumn: string;
+    viewOnDashboardAction: string;
+    formattedReportAction: string;
+  };
   lists: {
     searchPlaceholder: string;
     clearSearch: string;
@@ -1308,6 +1332,30 @@ export const en = {
     title: "Pending approval",
     description: "Your access request is still under review. Falak will email you once it's approved.",
   },
+  companyProfile: {
+    subtitle: "Startup profile",
+    openProfileAction: "Open startup profile",
+    editDetailsAction: "Edit details",
+    archivedNote: "This startup is archived.",
+    tabOverview: "Overview",
+    tabReports: "Reports",
+    tabDashboard: "Dashboard",
+    statReports: "Reports submitted",
+    statReportsValue: "{submitted} of {total}",
+    statLatestRevenue: "Latest reported revenue",
+    statTotalInvested: "Total invested",
+    statLatestValuation: "Latest valuation",
+    investmentsTitle: "Investments",
+    noInvestments: "No investments recorded yet.",
+    signedColumn: "Signed",
+    amountColumn: "Invested",
+    ownershipColumn: "Ownership",
+    reportsTitle: "All reports",
+    noReports: "No reports have been requested from this startup yet.",
+    templateColumn: "Template",
+    viewOnDashboardAction: "View dashboard",
+    formattedReportAction: "Formatted report",
+  },
   lists: {
     searchPlaceholder: "Search…",
     clearSearch: "Clear search",
@@ -2021,6 +2069,30 @@ export const ar = {
   pendingApproval: {
     title: "بانتظار الموافقة",
     description: "لا يزال طلب الوصول الخاص بك قيد المراجعة. ستُرسل لك فلك بريدًا إلكترونيًا عند الموافقة عليه.",
+  },
+  companyProfile: {
+    subtitle: "ملف الشركة الناشئة",
+    openProfileAction: "فتح ملف الشركة الناشئة",
+    editDetailsAction: "تعديل البيانات",
+    archivedNote: "هذه الشركة الناشئة مؤرشفة.",
+    tabOverview: "نظرة عامة",
+    tabReports: "التقارير",
+    tabDashboard: "لوحة المعلومات",
+    statReports: "التقارير المقدمة",
+    statReportsValue: "{submitted} من {total}",
+    statLatestRevenue: "آخر إيرادات مُبلغ عنها",
+    statTotalInvested: "إجمالي الاستثمار",
+    statLatestValuation: "آخر تقييم",
+    investmentsTitle: "الاستثمارات",
+    noInvestments: "لا توجد استثمارات مسجلة بعد.",
+    signedColumn: "تاريخ التوقيع",
+    amountColumn: "المبلغ المستثمر",
+    ownershipColumn: "نسبة الملكية",
+    reportsTitle: "جميع التقارير",
+    noReports: "لم يُطلب أي تقرير من هذه الشركة الناشئة بعد.",
+    templateColumn: "القالب",
+    viewOnDashboardAction: "عرض لوحة المعلومات",
+    formattedReportAction: "التقرير المنسق",
   },
   lists: {
     searchPlaceholder: "بحث…",
