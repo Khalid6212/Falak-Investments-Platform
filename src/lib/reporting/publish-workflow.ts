@@ -48,9 +48,16 @@ async function resolveInvestorExposure(tx: Prisma.TransactionClient, companyId: 
   const vehicleIds = vehiclePositions.map((p) => p.vehicleId).filter((v): v is string => v !== null);
   const directInvestorIds = directPositions.map((p) => p.investorId).filter((v): v is string => v !== null);
 
+  // A vehicle investor is exposed to this startup when their position
+  // covers all the vehicle's startups, or they hold an active
+  // startup-level exposure to it (deal-by-deal positions).
   const vehicleInvestorPositions = vehicleIds.length
     ? await tx.investorVehiclePosition.findMany({
-        where: { vehicleId: { in: vehicleIds }, status: "Active" },
+        where: {
+          vehicleId: { in: vehicleIds },
+          status: "Active",
+          OR: [{ exposureScope: "ALL_STARTUPS" }, { startupExposures: { some: { companyId, status: "Active" } } }],
+        },
         select: { investorId: true },
         distinct: ["investorId"],
       })

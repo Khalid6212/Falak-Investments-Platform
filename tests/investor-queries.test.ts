@@ -335,3 +335,24 @@ test("news: a startup whose latest report has no review notes shows no news, not
   const { news } = await getInvestorPortfolioData();
   assert.equal(news.length, 0);
 });
+
+test("startup-level exposure: a deal-by-deal investor's vehicle card lists only their selected startups", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(
+    makeInvestorQueriesDbStub({
+      memberships: [MEMBERSHIP],
+      reportAccessGrants: [],
+      investorVehiclePositions: [{ investorId: "inv_1", vehicleId: "veh_1", status: "Active", exposureScope: "SELECTED", exposedCompanyIds: ["co_2"] }],
+      vehicles: [{ id: "veh_1", slug: "angels-spv", nameEn: "Angels SPV", nameAr: "صندوق الملائكة", type: "SPV", currency: "USD" }],
+      ownershipLinks: [
+        { vehicleId: "veh_1", companyId: "co_1", companyNameEn: "Waslah Logistics", companySlug: "waslah" },
+        { vehicleId: "veh_1", companyId: "co_2", companyNameEn: "Thakaa Med", companySlug: "thakaa-med" },
+      ],
+    })
+  );
+  const result = await getInvestorPortfolioData();
+  assert.deepEqual(
+    result.vehicleExposures[0].linkedCompanies.map((c) => c.nameEn),
+    ["Thakaa Med"]
+  );
+});

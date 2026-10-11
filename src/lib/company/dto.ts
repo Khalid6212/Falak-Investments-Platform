@@ -8,6 +8,8 @@ import type {
   NarrativeKind,
   CompanyValuationType,
   Department,
+  ExposureScope,
+  InvestorParticipation,
 } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 import type { CompanyMetricBenchmark } from "@/lib/admin/benchmarking";
@@ -121,6 +123,22 @@ export interface CompanyInvestmentDTO {
   ownershipPct: number | null;
 }
 
+/** An investor exposed to this startup through a vehicle. Falak-staff-only. */
+export interface CompanyInvestorExposureDTO {
+  positionId: string;
+  investorId: string;
+  investorNameEn: string;
+  investorNameAr: string;
+  vehicleNameEn: string;
+  vehicleNameAr: string;
+  /** ALL_STARTUPS: exposed as a holder of the whole vehicle. */
+  exposureScope: ExposureScope;
+  investedAmount: number | null;
+  currency: Currency | null;
+  ownershipPct: number | null;
+  participation: InvestorParticipation | null;
+}
+
 export interface CompanyReportData {
   company: CompanyReportDTO;
   periods: CompanyReportPeriodOption[];
@@ -131,4 +149,6 @@ export interface CompanyReportData {
   investments: CompanyInvestmentDTO[];
   /** Admin only: may correct or remove recorded investments. */
   canManageInvestments: boolean;
+  /** Always [] for a company member. */
+  investorExposures: CompanyInvestorExposureDTO[];
 }

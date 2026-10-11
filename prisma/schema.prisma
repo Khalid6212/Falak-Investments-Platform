@@ -267,6 +267,7 @@ model Company {
   updatedAt     DateTime       @updatedAt
 
   ownershipPositions OwnershipPosition[]
+  investorExposures  InvestorStartupExposure[]
   invites            CompanyInvite[]
   memberships        CompanyMembership[]
   cycles             ReportingCycle[]
@@ -395,6 +396,7 @@ model Investor {
   memberships        InvestorMembership[]
   invites            InvestorInvite[]
   positions          InvestorVehiclePosition[]
+  startupExposures   InvestorStartupExposure[]
   ownershipPositions OwnershipPosition[]
   reports            Report[]
   accessGrants       ReportAccessGrant[]
@@ -475,13 +477,62 @@ model InvestorVehiclePosition {
   effectiveFrom    DateTime       @db.Date
   effectiveTo      DateTime?      @db.Date
   status           PositionStatus @default(Active)
+  // ALL_STARTUPS: exposed to every startup the vehicle holds, including
+  // ones added later (a pooled fund). SELECTED: only the startups with an
+  // active InvestorStartupExposure under this position (deal-by-deal).
+  exposureScope    ExposureScope  @default(ALL_STARTUPS)
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  startupExposures InvestorStartupExposure[]
 
   @@unique([investorId, vehicleId, effectiveFrom])
   @@index([investorId])
   @@index([vehicleId])
   @@map("investor_vehicle_positions")
+}
+
+enum ExposureScope {
+  ALL_STARTUPS
+  SELECTED
+}
+
+// How the investor took part in a specific startup investment.
+enum InvestorParticipation {
+  NETWORK_MEMBER
+  SYNDICATE_MEMBER
+}
+
+// An investor's exposure to one startup THROUGH one vehicle position:
+// the layer between investor -> vehicle and vehicle -> startup. Under a
+// SELECTED position these rows decide which startups the investor is
+// exposed to (and so which reports they receive); under ALL_STARTUPS they
+// only add the amount and label for that startup. Terms are never edited
+// in place: a change ends the row (status Exited + effectiveTo) and adds a
+// new one, so history is kept.
+model InvestorStartupExposure {
+  id             String                  @id @default(cuid())
+  position       InvestorVehiclePosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  positionId     String
+  // Copied from the position for direct lookups by investor.
+  investor       Investor                @relation(fields: [investorId], references: [id], onDelete: Restrict)
+  investorId     String
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  companyId      String
+  investedAmount Decimal?                @db.Decimal(18, 4)
+  currency       Currency?
+  ownershipPct   Decimal?                @db.Decimal(7, 4)
+  participation  InvestorParticipation?
+  effectiveFrom  DateTime                @db.Date
+  effectiveTo    DateTime?               @db.Date
+  status         PositionStatus          @default(Active)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([positionId])
+  @@index([investorId])
+  @@index([companyId])
+  @@map("investor_startup_exposures")
 }
 
 // ============================================================

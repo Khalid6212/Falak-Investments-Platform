@@ -205,8 +205,28 @@ export async function getInvestorPortfolioData(): Promise<InvestorPortfolioData>
   // publishSubmission's resolveInvestorExposure works in reverse.
   const vehiclePositions = await db.investorVehiclePosition.findMany({
     where: { investorId: { in: investorIds }, status: "Active" },
-    select: { investorId: true, vehicleId: true },
+    select: {
+      investorId: true,
+      vehicleId: true,
+      exposureScope: true,
+      startupExposures: { where: { status: "Active" }, select: { companyId: true } },
+    },
   });
+
+  // Per (investor, vehicle): null = every startup in the vehicle; otherwise
+  // the startups they were selected for. Several positions on one vehicle
+  // combine: any "all startups" position wins, else the union.
+  const exposedCompanies = new Map<string, Set<string> | null>();
+  for (const p of vehiclePositions) {
+    const key = `${p.investorId}:${p.vehicleId}`;
+    if (p.exposureScope === "ALL_STARTUPS" || exposedCompanies.get(key) === null) {
+      exposedCompanies.set(key, null);
+      continue;
+    }
+    const set = exposedCompanies.get(key) ?? new Set<string>();
+    for (const e of p.startupExposures) set.add(e.companyId);
+    exposedCompanies.set(key, set);
+  }
 
   // InvestorVehiclePosition's unique constraint is
   // [investorId, vehicleId, effectiveFrom] -- two Active rows can exist
@@ -268,9 +288,11 @@ export async function getInvestorPortfolioData(): Promise<InvestorPortfolioData>
     if (!vehicle) continue;
 
     const seenCompanyIds = new Set<string>();
+    const exposedHere = exposedCompanies.get(`${position.investorId}:${vehicle.id}`) ?? null;
     const linkedCompanies = ownershipLinks
       .filter((l) => l.vehicleId === vehicle.id)
       .map((l) => l.company)
+      .filter((c) => exposedHere === null || exposedHere.has(c.id))
       .filter((c) => {
         if (seenCompanyIds.has(c.id)) return false;
         seenCompanyIds.add(c.id);

@@ -36,7 +36,7 @@ const SUB_NAV_ITEMS: SubNavItem[] = [
   { key: "createCycleTitle", href: "/admin/manage/new-reporting-cycle", activeUnder: "/admin/manage/reporting-requests/" },
   { key: "invitesSectionTitle", href: "/admin/manage/invites" },
   { key: "vehicleAssignmentTitle", href: "/admin/manage/vehicle-assignment" },
-  { key: "investorVehicleAssignmentTitle", href: "/admin/manage/investor-vehicle-assignment" },
+  { key: "investorVehicleAssignmentTitle", href: "/admin/manage/investor-vehicle-assignment", activeUnder: "/admin/manage/investor-vehicle-assignment/" },
   { key: "recordCompanyValuationTitle", href: "/admin/manage/company-valuation" },
   { key: "recordVehicleValuationTitle", href: "/admin/manage/vehicle-valuation" },
   { key: "recordCapitalTransactionTitle", href: "/admin/manage/capital-transaction" },

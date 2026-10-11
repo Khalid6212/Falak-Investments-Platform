@@ -16,6 +16,7 @@ import type {
   CompanyReportViewerRole,
   CompanyValuationPointDTO,
   CompanyInvestmentDTO,
+  CompanyInvestorExposureDTO,
 } from "./dto";
 
 function toDateOnly(date: Date): string {
@@ -244,5 +245,55 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
         )
       : [];
 
-  return { company: companyDTO, periods, linkedVehicles, viewerRole, valuations, investments, canManageInvestments: isAdmin };
+  // Investors exposed to this startup: holders of a whole vehicle that owns
+  // it, or deal-by-deal investors selected for it. Staff only.
+  const vehicleIds = linkedVehicles.map((v) => v.id);
+  const exposurePositions =
+    viewerRole === "FALAK_STAFF" && vehicleIds.length > 0
+      ? await db.investorVehiclePosition.findMany({
+          where: {
+            vehicleId: { in: vehicleIds },
+            status: "Active",
+            investor: { archivedAt: null },
+            OR: [{ exposureScope: "ALL_STARTUPS" }, { startupExposures: { some: { companyId: company.id, status: "Active" } } }],
+          },
+          select: {
+            id: true,
+            exposureScope: true,
+            investor: { select: { id: true, nameEn: true, nameAr: true } },
+            vehicle: { select: { nameEn: true, nameAr: true } },
+            startupExposures: {
+              where: { companyId: company.id, status: "Active" },
+              select: { investedAmount: true, currency: true, ownershipPct: true, participation: true },
+            },
+          },
+        })
+      : [];
+  const investorExposures: CompanyInvestorExposureDTO[] = exposurePositions.map((p) => {
+    const e = p.startupExposures[0];
+    return {
+      positionId: p.id,
+      investorId: p.investor.id,
+      investorNameEn: p.investor.nameEn,
+      investorNameAr: p.investor.nameAr,
+      vehicleNameEn: p.vehicle.nameEn,
+      vehicleNameAr: p.vehicle.nameAr,
+      exposureScope: p.exposureScope,
+      investedAmount: e?.investedAmount?.toNumber() ?? null,
+      currency: e?.currency ?? null,
+      ownershipPct: e?.ownershipPct?.toNumber() ?? null,
+      participation: e?.participation ?? null,
+    };
+  });
+
+  return {
+    company: companyDTO,
+    periods,
+    linkedVehicles,
+    viewerRole,
+    valuations,
+    investments,
+    canManageInvestments: isAdmin,
+    investorExposures,
+  };
 }

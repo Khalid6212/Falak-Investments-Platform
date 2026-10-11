@@ -55,6 +55,18 @@ export function LinkInvestorToVehicleForm({ investors, vehicles }: { investors: 
         {errorFor("commitmentAmount")}
         <p className="text-xs text-muted-foreground">{t.admin.manage.ownershipPctAutoHint}</p>
       </div>
+      <fieldset className="flex flex-col gap-1.5 sm:col-span-2">
+        <legend className={`${labelClass} mb-1`}>{t.admin.manage.exposureScopeLabel}</legend>
+        <label className="inline-flex items-center gap-2 text-sm text-foreground">
+          <input type="radio" name="exposureScope" value="ALL_STARTUPS" defaultChecked />
+          {t.admin.manage.exposureAllOption}
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm text-foreground">
+          <input type="radio" name="exposureScope" value="SELECTED" />
+          {t.admin.manage.exposureSelectedOption}
+        </label>
+        <p className="text-xs text-muted-foreground">{t.admin.manage.exposureLinkHint}</p>
+      </fieldset>
       <div className="sm:col-span-2">
         <FormMessage state={state} />
       </div>

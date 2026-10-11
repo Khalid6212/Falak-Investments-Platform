@@ -636,6 +636,8 @@ export async function linkInvestorToVehicleAction(_prevState: ActionState, formD
   const effectiveFromRaw = readString(formData, "effectiveFrom");
   const commitmentAmount = readAmount(formData, "commitmentAmount");
   const calledAmount = readAmount(formData, "calledAmount");
+  // "All startups in the vehicle" unless deal-by-deal is chosen.
+  const exposureScope = readString(formData, "exposureScope") === "SELECTED" ? "SELECTED" : "ALL_STARTUPS";
 
   const invalid = checkFields([
     ["investorId", investorId, FIELD.choose],
@@ -702,6 +704,7 @@ export async function linkInvestorToVehicleAction(_prevState: ActionState, formD
           commitmentAmount: commitmentAmount || null,
           calledAmount: calledAmount || null,
           ownershipPct,
+          exposureScope,
           status: "Active",
         },
       });
@@ -721,10 +724,15 @@ export async function linkInvestorToVehicleAction(_prevState: ActionState, formD
       // is (re-)sent for these backfilled grants -- "Resend to Investors"
       // on the Reports Log covers that separately, per report, if Falak
       // wants to notify by email too.
-      const vehicleCompanies = await tx.ownershipPosition.findMany({
-        where: { vehicleId, holderType: "VEHICLE" },
-        select: { companyId: true },
-      });
+      // A deal-by-deal investor has no startups yet: their reports are
+      // shared when startups are ticked on the position's Startups page.
+      const vehicleCompanies =
+        exposureScope === "ALL_STARTUPS"
+          ? await tx.ownershipPosition.findMany({
+              where: { vehicleId, holderType: "VEHICLE" },
+              select: { companyId: true },
+            })
+          : [];
       const companyIds = [...new Set(vehicleCompanies.map((p) => p.companyId))];
       if (companyIds.length > 0) {
         const latestVersions = await tx.reportVersion.findMany({

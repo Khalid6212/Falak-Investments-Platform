@@ -288,6 +288,25 @@ export interface Dictionary {
       editAction: string;
       saveChangesLabel: string;
       emailAgainAction: string;
+      exposureTitle: string;
+      exposureScopeLabel: string;
+      exposureAllOption: string;
+      exposureSelectedOption: string;
+      exposureLinkHint: string;
+      exposureAllNote: string;
+      exposureSelectedNote: string;
+      exposureColumn: string;
+      exposureAllValue: string;
+      exposureSelectedValue: string;
+      manageStartupsAction: string;
+      exposureIncludedColumn: string;
+      exposureAmountColumn: string;
+      exposureOwnershipColumn: string;
+      participationColumn: string;
+      participationNetwork: string;
+      participationSyndicate: string;
+      exposureSavedMessage: string;
+      exposureNoStartups: string;
       importStartupsAction: string;
       importTitle: string;
       importIntro: string;
@@ -621,6 +640,9 @@ export interface Dictionary {
     removeAction: string;
     removeConfirm: string;
     correctionNote: string;
+    investorsTitle: string;
+    noInvestors: string;
+    selectedExposureLabel: string;
   };
   lists: {
     searchPlaceholder: string;
@@ -1024,6 +1046,25 @@ export const en = {
       editAction: "Edit",
       saveChangesLabel: "Save Changes",
       emailAgainAction: "Email again",
+      exposureTitle: "Investor's startups in a vehicle",
+      exposureScopeLabel: "Startups this investor is exposed to",
+      exposureAllOption: "All startups in this vehicle (including ones added later)",
+      exposureSelectedOption: "Selected startups only (deal by deal)",
+      exposureLinkHint: "For selected startups, pick them afterwards with the Startups button in the list below.",
+      exposureAllNote: "Exposed to every startup in this vehicle, so they receive all its startups' reports. Amounts and labels below are optional.",
+      exposureSelectedNote: "Exposed only to the ticked startups: they receive and see only those startups' reports.",
+      exposureColumn: "Startups",
+      exposureAllValue: "All startups",
+      exposureSelectedValue: "{count} selected",
+      manageStartupsAction: "Startups",
+      exposureIncludedColumn: "Exposed",
+      exposureAmountColumn: "Invested",
+      exposureOwnershipColumn: "Ownership (optional)",
+      participationColumn: "Investor type",
+      participationNetwork: "Network member",
+      participationSyndicate: "Syndicate member",
+      exposureSavedMessage: "Saved.",
+      exposureNoStartups: "This vehicle doesn't hold any startups yet. Add them under Company Assignment to Vehicle.",
       importStartupsAction: "Import from Excel",
       importTitle: "Import startups from Excel",
       importIntro: "Add many startups at once: download the template, fill in one startup per row, then upload it and click Check file. Every row is checked with the same rules as the form below, and nothing is added until you click Import.",
@@ -1363,6 +1404,9 @@ export const en = {
     removeAction: "Remove",
     removeConfirm: "Remove this investment? It will stop counting in every total; the record stays in the audit history.",
     correctionNote: "Saving replaces this record with the corrected one; the original stays in the audit history.",
+    investorsTitle: "Investors",
+    noInvestors: "No investor is exposed to this startup yet.",
+    selectedExposureLabel: "selected",
   },
   lists: {
     searchPlaceholder: "Search…",
@@ -1766,6 +1810,25 @@ export const ar = {
       editAction: "تعديل",
       saveChangesLabel: "حفظ التغييرات",
       emailAgainAction: "إرسال البريد مجدداً",
+      exposureTitle: "الشركات الناشئة للمستثمر في أداة استثمارية",
+      exposureScopeLabel: "الشركات الناشئة التي يتعرض لها هذا المستثمر",
+      exposureAllOption: "جميع الشركات الناشئة في هذه الأداة (بما فيها التي تُضاف لاحقاً)",
+      exposureSelectedOption: "شركات ناشئة محددة فقط (صفقة بصفقة)",
+      exposureLinkHint: "لاختيار الشركات المحددة، استخدم زر «الشركات الناشئة» في القائمة أدناه بعد الإسناد.",
+      exposureAllNote: "يتعرض لجميع الشركات الناشئة في هذه الأداة، فيتلقى تقاريرها كلها. المبالغ والتصنيفات أدناه اختيارية.",
+      exposureSelectedNote: "يتعرض للشركات المحددة فقط: يتلقى ويرى تقارير هذه الشركات فقط.",
+      exposureColumn: "الشركات الناشئة",
+      exposureAllValue: "جميع الشركات",
+      exposureSelectedValue: "{count} محددة",
+      manageStartupsAction: "الشركات الناشئة",
+      exposureIncludedColumn: "متعرض",
+      exposureAmountColumn: "المبلغ المستثمر",
+      exposureOwnershipColumn: "الملكية (اختياري)",
+      participationColumn: "نوع المستثمر",
+      participationNetwork: "عضو في الشبكة",
+      participationSyndicate: "عضو في التحالف الاستثماري",
+      exposureSavedMessage: "تم الحفظ.",
+      exposureNoStartups: "لا تملك هذه الأداة أي شركات ناشئة بعد. أضفها من «إسناد شركة إلى أداة استثمارية».",
       importStartupsAction: "استيراد من Excel",
       importTitle: "استيراد الشركات الناشئة من Excel",
       importIntro: "أضف عدة شركات ناشئة دفعة واحدة: نزّل القالب، واملأ شركة واحدة في كل صف، ثم ارفعه واضغط «فحص الملف». يُفحص كل صف بنفس قواعد النموذج أدناه، ولا يُضاف شيء حتى تضغط «استيراد».",
@@ -2105,6 +2168,9 @@ export const ar = {
     removeAction: "إزالة",
     removeConfirm: "إزالة هذا الاستثمار؟ لن يُحتسب بعد الآن في أي إجمالي، ويبقى السجل في سجل التدقيق.",
     correctionNote: "يستبدل الحفظ هذا السجل بالسجل المصحح، ويبقى الأصل في سجل التدقيق.",
+    investorsTitle: "المستثمرون",
+    noInvestors: "لا يوجد مستثمر متعرض لهذه الشركة الناشئة بعد.",
+    selectedExposureLabel: "محدد",
   },
   lists: {
     searchPlaceholder: "بحث…",

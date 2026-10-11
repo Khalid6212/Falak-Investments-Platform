@@ -193,6 +193,56 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                 )}
               </Card>
             </div>
+
+            {isStaff ? (
+              <Card className="min-w-0">
+                <h2 className="font-heading text-sm font-semibold text-foreground">{p.investorsTitle}</h2>
+                {data.investorExposures.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">{p.noInvestors}</p>
+                ) : (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-start text-sm">
+                      <thead>
+                        <tr className="border-b border-border-subtle text-xs text-muted-foreground">
+                          <th className="py-1.5 pe-3 text-start font-medium">{t.admin.manage.investorLabel}</th>
+                          <th className="py-1.5 pe-3 text-start font-medium">{t.admin.table.vehicleColumn}</th>
+                          <th className="py-1.5 pe-3 text-start font-medium">{p.amountColumn}</th>
+                          <th className="py-1.5 pe-3 text-start font-medium">{p.ownershipColumn}</th>
+                          <th className="py-1.5 text-start font-medium">{t.admin.manage.participationColumn}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.investorExposures.map((x) => (
+                          <tr key={x.positionId} className="border-b border-border-subtle last:border-0">
+                            <td className="py-1.5 pe-3 font-medium">{lang === "ar" ? x.investorNameAr : x.investorNameEn}</td>
+                            <td className="py-1.5 pe-3">
+                              {lang === "ar" ? x.vehicleNameAr : x.vehicleNameEn}
+                              <Link
+                                href={`/admin/manage/investor-vehicle-assignment/${x.positionId}`}
+                                className="ms-2 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                              >
+                                {x.exposureScope === "ALL_STARTUPS" ? t.admin.manage.exposureAllValue : p.selectedExposureLabel}
+                              </Link>
+                            </td>
+                            <td className="whitespace-nowrap py-1.5 pe-3">
+                              {x.investedAmount !== null && x.currency ? <Num>{formatCurrency(x.investedAmount, x.currency, lang)}</Num> : "—"}
+                            </td>
+                            <td className="whitespace-nowrap py-1.5 pe-3">{x.ownershipPct !== null ? <Num>{formatPercent(x.ownershipPct, lang, 2)}</Num> : "—"}</td>
+                            <td className="whitespace-nowrap py-1.5">
+                              {x.participation === "NETWORK_MEMBER"
+                                ? t.admin.manage.participationNetwork
+                                : x.participation === "SYNDICATE_MEMBER"
+                                  ? t.admin.manage.participationSyndicate
+                                  : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            ) : null}
           </div>
         ) : null}
 

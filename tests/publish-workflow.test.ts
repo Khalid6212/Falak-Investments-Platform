@@ -176,3 +176,27 @@ test("a narrative kind with both languages blank is never created; a kind with o
   assert.equal(sections[0].textEn, "");
   assert.equal(sections[0].textAr, "تحديث");
 });
+
+test("startup-level exposure: a deal-by-deal investor gets a startup's report only when selected for it", async () => {
+  setCurrentUser(REAL_USER);
+  const db = makePublishWorkflowDbStub({
+    falakRoles: ADMIN_ROLE,
+    submission: BASE_SUBMISSION,
+    ownershipPositions: [{ companyId: "co_1", holderType: "VEHICLE", vehicleId: "veh_1" }],
+    investorVehiclePositions: [
+      { vehicleId: "veh_1", investorId: "inv_pooled", status: "Active" },
+      { vehicleId: "veh_1", investorId: "inv_selected", status: "Active", exposureScope: "SELECTED", exposedCompanyIds: ["co_1"] },
+      { vehicleId: "veh_1", investorId: "inv_other_deal", status: "Active", exposureScope: "SELECTED", exposedCompanyIds: ["co_2"] },
+    ],
+    investors: [
+      { id: "inv_pooled", archivedAt: null },
+      { id: "inv_selected", archivedAt: null },
+      { id: "inv_other_deal", archivedAt: null },
+    ],
+  });
+  setDbStub(db);
+
+  await publishSubmission("sub_1", NO_NARRATIVES);
+  const granted = db.getReportAccessGrants().map((g) => g.investorId).sort();
+  assert.deepEqual(granted, ["inv_pooled", "inv_selected"]);
+});

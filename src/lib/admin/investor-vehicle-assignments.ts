@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
-import type { Currency } from "@/generated/prisma/client";
+import type { Currency, ExposureScope } from "@/generated/prisma/client";
 
 export interface InvestorVehicleAssignmentRow {
   id: string;
@@ -15,6 +15,9 @@ export interface InvestorVehicleAssignmentRow {
   commitmentAmount: number | null;
   ownershipPct: number | null;
   effectiveFrom: string;
+  exposureScope: ExposureScope;
+  /** Startups with an active startup-level exposure under this position. */
+  exposedStartupCount: number;
 }
 
 function toDateOnly(date: Date): string {
@@ -47,6 +50,8 @@ export async function getInvestorVehicleAssignments(): Promise<InvestorVehicleAs
       commitmentAmount: true,
       ownershipPct: true,
       effectiveFrom: true,
+      exposureScope: true,
+      _count: { select: { startupExposures: { where: { status: "Active" } } } },
       investor: { select: { id: true, nameEn: true, nameAr: true } },
       vehicle: { select: { id: true, nameEn: true, nameAr: true } },
     },
@@ -64,5 +69,7 @@ export async function getInvestorVehicleAssignments(): Promise<InvestorVehicleAs
     commitmentAmount: p.commitmentAmount?.toNumber() ?? null,
     ownershipPct: p.ownershipPct?.toNumber() ?? null,
     effectiveFrom: toDateOnly(p.effectiveFrom),
+    exposureScope: p.exposureScope,
+    exposedStartupCount: p._count.startupExposures,
   }));
 }

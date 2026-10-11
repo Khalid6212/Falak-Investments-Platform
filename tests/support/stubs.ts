@@ -669,6 +669,10 @@ export interface InvestorVehiclePositionFixture {
   vehicleId: string;
   investorId: string;
   status: string;
+  /** Defaults to ALL_STARTUPS. */
+  exposureScope?: "ALL_STARTUPS" | "SELECTED";
+  /** Startups with an active startup-level exposure under this position. */
+  exposedCompanyIds?: string[];
 }
 
 export interface InvestorFixture {
@@ -806,9 +810,25 @@ export function makePublishWorkflowDbStub(options: {
           .map((p) => ({ vehicleId: p.vehicleId ?? null, investorId: p.investorId ?? null })),
     },
     investorVehiclePosition: {
-      findMany: async ({ where }: { where: { vehicleId: { in: string[] }; status: string } }) => {
+      findMany: async ({
+        where,
+      }: {
+        where: {
+          vehicleId: { in: string[] };
+          status: string;
+          OR?: [unknown, { startupExposures: { some: { companyId: string } } }];
+        };
+      }) => {
+        // Mirrors the real query: an "all startups" position, or a selected
+        // one with an exposure to the company being published.
+        const companyId = where.OR?.[1].startupExposures.some.companyId;
         const matches = (options.investorVehiclePositions ?? []).filter(
-          (p) => where.vehicleId.in.includes(p.vehicleId) && p.status === where.status
+          (p) =>
+            where.vehicleId.in.includes(p.vehicleId) &&
+            p.status === where.status &&
+            (!where.OR ||
+              (p.exposureScope ?? "ALL_STARTUPS") === "ALL_STARTUPS" ||
+              (companyId !== undefined && (p.exposedCompanyIds ?? []).includes(companyId)))
         );
         const distinct = new Map<string, { investorId: string }>();
         for (const m of matches) distinct.set(m.investorId, { investorId: m.investorId });
@@ -945,6 +965,9 @@ export interface InvestorVehiclePositionFixtureForQueries {
   status: string;
   commitmentAmount?: number | null;
   currency?: string;
+  /** Defaults to ALL_STARTUPS. */
+  exposureScope?: "ALL_STARTUPS" | "SELECTED";
+  exposedCompanyIds?: string[];
 }
 
 export interface VehicleFixture {
@@ -1089,6 +1112,8 @@ export function makeInvestorQueriesDbStub(options: {
             vehicleId: p.vehicleId,
             commitmentAmount: p.commitmentAmount == null ? null : { toNumber: () => p.commitmentAmount },
             currency: p.currency ?? "SAR",
+            exposureScope: p.exposureScope ?? "ALL_STARTUPS",
+            startupExposures: (p.exposedCompanyIds ?? []).map((companyId) => ({ companyId })),
           })),
     },
     vehicleNavSnapshot: {
@@ -1318,6 +1343,7 @@ export function makeCompanyReportDbStub(options: {
         };
       },
     },
+    investorVehiclePosition: { findMany: async () => [] },
     getFindUniqueCalls: (): string[] => findUniqueCalls,
   };
 }
