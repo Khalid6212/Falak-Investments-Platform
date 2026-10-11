@@ -219,6 +219,10 @@ export interface Dictionary {
       ownershipPctOptionalLabel: string;
       vehicleDescriptionEnLabel: string;
       vehicleDescriptionArLabel: string;
+      investorEmailLabel: string;
+      investorPhoneLabel: string;
+      investorBriefEnLabel: string;
+      investorBriefArLabel: string;
       signedDateLabel: string;
       templateLabel: string;
       periodLabelLabel: string;
@@ -923,6 +927,10 @@ export const en = {
       ownershipPctOptionalLabel: "Ownership % (optional, e.g. 0.10 for 10%)",
       vehicleDescriptionEnLabel: "Description (English, optional)",
       vehicleDescriptionArLabel: "Description (Arabic, optional)",
+      investorEmailLabel: "Email (optional)",
+      investorPhoneLabel: "Phone number (optional)",
+      investorBriefEnLabel: "Brief (English, optional)",
+      investorBriefArLabel: "Brief (Arabic, optional)",
       signedDateLabel: "Signed Date",
       templateLabel: "Reporting Template",
       periodLabelLabel: "Period Label (e.g. Q3 2026)",
@@ -1633,6 +1641,10 @@ export const ar = {
       ownershipPctOptionalLabel: "نسبة الملكية (اختياري، مثال: 0.10 لنسبة 10%)",
       vehicleDescriptionEnLabel: "الوصف (بالإنجليزية، اختياري)",
       vehicleDescriptionArLabel: "الوصف (بالعربية، اختياري)",
+      investorEmailLabel: "البريد الإلكتروني (اختياري)",
+      investorPhoneLabel: "رقم الهاتف (اختياري)",
+      investorBriefEnLabel: "نبذة (بالإنجليزية، اختياري)",
+      investorBriefArLabel: "نبذة (بالعربية، اختياري)",
       signedDateLabel: "تاريخ التوقيع",
       templateLabel: "قالب التقارير",
       periodLabelLabel: "اسم الفترة (مثال: الربع الثالث 2026)",

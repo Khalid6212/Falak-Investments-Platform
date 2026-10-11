@@ -255,6 +255,10 @@ export interface InvestorInput {
   nameAr: string;
   type: InvestorType;
   department: Department;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  briefEn: string | null;
+  briefAr: string | null;
 }
 
 export function validateInvestor(formData: FormData, scope: Department[] | null): Validated<InvestorInput> {
@@ -263,14 +267,37 @@ export function validateInvestor(formData: FormData, scope: Department[] | null)
     nameAr: read(formData, "nameAr"),
     type: read(formData, "type"),
     department: read(formData, "department"),
+    contactEmail: read(formData, "contactEmail"),
+    contactPhone: read(formData, "contactPhone"),
+    briefEn: read(formData, "briefEn"),
+    briefAr: read(formData, "briefAr"),
   };
   const errors: FieldErrors = {};
 
   if (!isName(v.nameEn)) errors.nameEn = MSG.name;
   if (!isName(v.nameAr)) errors.nameAr = MSG.name;
   if (!oneOf(v.type, INVESTOR_TYPES)) errors.type = MSG.choose;
+  if (v.contactEmail && (v.contactEmail.length > MAX_NAME_LENGTH || !EMAIL_PATTERN.test(v.contactEmail))) {
+    errors.contactEmail = MSG.email;
+  }
+  if (v.contactPhone && !PHONE_PATTERN.test(v.contactPhone)) errors.contactPhone = MSG.phone;
+  if (v.briefEn.length > MAX_DESCRIPTION_LENGTH) errors.briefEn = MSG.description;
+  if (v.briefAr.length > MAX_DESCRIPTION_LENGTH) errors.briefAr = MSG.description;
   const department = checkDepartment(v.department, scope, errors);
 
   if (Object.keys(errors).length > 0 || !department) return { values: v, errors, input: null };
-  return { values: v, errors, input: { ...v, type: v.type as InvestorType, department } };
+  return {
+    values: v,
+    errors,
+    input: {
+      nameEn: v.nameEn,
+      nameAr: v.nameAr,
+      type: v.type as InvestorType,
+      department,
+      contactEmail: v.contactEmail ? v.contactEmail.toLowerCase() : null,
+      contactPhone: v.contactPhone || null,
+      briefEn: v.briefEn || null,
+      briefAr: v.briefAr || null,
+    },
+  };
 }

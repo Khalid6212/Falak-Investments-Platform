@@ -381,6 +381,11 @@ model Investor {
   // this is Falak's own manual classification, not derived from
   // InvestorVehiclePosition.
   department Department   @default(InvestmentDepartment)
+  // Optional contact details and a short description, staff-entered.
+  contactEmail String?
+  contactPhone String?
+  briefEn      String?
+  briefAr      String?
   archivedAt DateTime?
   // Set by Delete; see Company.deletedAt.
   deletedAt  DateTime?

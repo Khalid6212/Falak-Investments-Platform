@@ -60,5 +60,15 @@ export async function getInvestorForEdit(id: string) {
   const { departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
   const i = await db.investor.findUnique({ where: { id } });
   if (!i || i.archivedAt || !inScope(departments, i.department)) return null;
-  return { id: i.id, nameEn: i.nameEn, nameAr: i.nameAr, type: i.type, department: i.department };
+  return {
+    id: i.id,
+    nameEn: i.nameEn,
+    nameAr: i.nameAr,
+    type: i.type,
+    department: i.department,
+    contactEmail: i.contactEmail ?? "",
+    contactPhone: i.contactPhone ?? "",
+    briefEn: i.briefEn ?? "",
+    briefAr: i.briefAr ?? "",
+  };
 }

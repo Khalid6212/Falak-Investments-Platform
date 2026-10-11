@@ -95,3 +95,26 @@ test("founder and HQ are optional, but checked when given", () => {
   const bad = validateCompany(form({ ...GOOD_COMPANY, founderEmail: "not-an-email", founderPhone: "abc", hqCountry: "XX" }), null);
   assert.deepEqual(Object.keys(bad.errors).sort(), ["founderEmail", "founderPhone", "hqCountry"]);
 });
+
+test("investor: contact details and brief are optional; given ones are checked and tidied", () => {
+  const base = { nameEn: "Gulf LP", nameAr: "شريك الخليج", type: "Institutional", department: "InvestmentDepartment" };
+
+  const empty = validateInvestor(form(base), null);
+  assert.equal(empty.input?.contactEmail, null);
+  assert.equal(empty.input?.contactPhone, null);
+  assert.equal(empty.input?.briefEn, null);
+
+  const full = validateInvestor(
+    form({ ...base, contactEmail: " Ops@GulfLP.com ", contactPhone: "+966 55 123 4567", briefEn: "Long-term LP.", briefAr: "شريك طويل الأجل." }),
+    null
+  );
+  assert.equal(full.input?.contactEmail, "ops@gulflp.com");
+  assert.equal(full.input?.contactPhone, "+966 55 123 4567");
+  assert.equal(full.input?.briefAr, "شريك طويل الأجل.");
+
+  const bad = validateInvestor(form({ ...base, contactEmail: "not-an-email", contactPhone: "call me", briefEn: "x".repeat(2001) }), null);
+  assert.equal(bad.input, null);
+  assert.ok(bad.errors.contactEmail);
+  assert.ok(bad.errors.contactPhone);
+  assert.ok(bad.errors.briefEn);
+});
