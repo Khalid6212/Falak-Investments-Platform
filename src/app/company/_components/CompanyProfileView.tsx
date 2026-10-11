@@ -14,6 +14,7 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format";
 import { CompanyDashboard } from "./CompanyDashboard";
 import { CompanyInfoCard } from "./CompanyInfoCard";
+import { InvestmentRowActions } from "./InvestmentRowActions";
 import type { CompanyReportData, CompanyReportPeriodOption } from "@/lib/company/dto";
 import type { Currency } from "@/generated/prisma/client";
 
@@ -148,11 +149,16 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                           <th className="py-1.5 pe-3 text-start font-medium">{p.signedColumn}</th>
                           <th className="py-1.5 pe-3 text-start font-medium">{p.amountColumn}</th>
                           <th className="py-1.5 text-start font-medium">{p.ownershipColumn}</th>
+                          {data.canManageInvestments ? (
+                            <th className="py-1.5 ps-3 text-start font-medium">
+                              <span className="sr-only">{p.correctAction}</span>
+                            </th>
+                          ) : null}
                         </tr>
                       </thead>
                       <tbody>
-                        {investments.map((i, n) => (
-                          <tr key={`${i.vehicleId}-${n}`} className="border-b border-border-subtle last:border-0">
+                        {investments.map((i) => (
+                          <tr key={i.id} className="border-b border-border-subtle last:border-0">
                             <td className="py-1.5 pe-3">
                               <Link href={`/vehicle/${i.vehicleSlug}`} className="text-link-foreground underline-offset-2 hover:underline">
                                 {lang === "ar" ? i.vehicleNameAr : i.vehicleNameEn}
@@ -163,6 +169,11 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                               {i.investedAmount !== null && i.currency ? <Num>{formatCurrency(i.investedAmount, i.currency, lang)}</Num> : "—"}
                             </td>
                             <td className="whitespace-nowrap py-1.5">{i.ownershipPct !== null ? <Num>{formatPercent(i.ownershipPct, lang, 2)}</Num> : "—"}</td>
+                            {data.canManageInvestments ? (
+                              <td className="py-1.5 ps-3 align-top">
+                                <InvestmentRowActions investment={i} />
+                              </td>
+                            ) : null}
                           </tr>
                         ))}
                       </tbody>

@@ -110,6 +110,7 @@ export interface CompanyValuationPointDTO {
 
 /** One investment agreement through a vehicle. Falak-staff-only, like valuations. */
 export interface CompanyInvestmentDTO {
+  id: string;
   vehicleId: string;
   vehicleSlug: string;
   vehicleNameEn: string;
@@ -128,4 +129,6 @@ export interface CompanyReportData {
   valuations: CompanyValuationPointDTO[];
   /** Always [] for a company member. */
   investments: CompanyInvestmentDTO[];
+  /** Admin only: may correct or remove recorded investments. */
+  canManageInvestments: boolean;
 }

@@ -1148,7 +1148,7 @@ export interface CompanyReportReportFixture {
 export interface CompanyReportVehicleLinkFixture {
   vehicleArchived?: boolean;
   vehicle: { id: string; slug: string; nameEn: string; nameAr: string; type: string; currency: string };
-  agreements?: { signedDate: Date; investedAmount: number | null; currency: string | null; ownershipPct: number | null }[];
+  agreements?: { id?: string; signedDate: Date; investedAmount: number | null; currency: string | null; ownershipPct: number | null }[];
 }
 
 export interface CompanyReportCompanyFixture {
@@ -1302,7 +1302,8 @@ export function makeCompanyReportDbStub(options: {
             .filter((l) => !l.vehicleArchived)
             .map((l) => ({
               vehicle: l.vehicle,
-              agreements: (l.agreements ?? []).map((a) => ({
+              agreements: (l.agreements ?? []).map((a, n) => ({
+                id: a.id ?? `agr_${n + 1}`,
                 signedDate: a.signedDate,
                 investedAmount: a.investedAmount === null ? null : { toNumber: () => a.investedAmount },
                 currency: a.currency,

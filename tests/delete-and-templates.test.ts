@@ -348,3 +348,70 @@ test("templates: a key belonging to a deleted metric can't be reused", async () 
   );
   assert.match(result.fieldErrors?.newKey_0 ?? "", /deleted metric/);
 });
+
+test("investments: Remove ends one (Terminated) and is Admin only", async () => {
+  setCurrentUser(REAL_USER);
+  const ops = recordingDb(OPS);
+  setDbStub(ops.db);
+  const denied = await actions.removeInvestmentAction({ error: null }, form({ agreementId: "agr_1" }));
+  assert.equal(denied.error, GENERIC_ACCESS_DENIED);
+
+  const updates: { where: Record<string, unknown>; data: Record<string, unknown> }[] = [];
+  const admin = recordingDb(ADMIN, {
+    investmentAgreement: {
+      updateMany: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        updates.push(args);
+        return { count: 1 };
+      },
+    },
+  });
+  setDbStub(admin.db);
+  const result = await actions.removeInvestmentAction({ error: null }, form({ agreementId: "agr_1" }));
+  assert.equal(result.success, true);
+  assert.equal(updates[0].data.status, "Terminated");
+  assert.ok(admin.calls.includes("auditEvent.create"));
+  assert.ok(!admin.calls.some((c) => c.endsWith(".delete") || c.endsWith(".deleteMany")), "no rows removed");
+});
+
+test("investments: Correct ends the old record and saves the corrected terms as a new one that supersedes it", async () => {
+  setCurrentUser(REAL_USER);
+  const created: Record<string, unknown>[] = [];
+  const ended: Record<string, unknown>[] = [];
+  const admin = recordingDb(ADMIN, {
+    investmentAgreement: {
+      findFirst: async () => ({ id: "agr_old", agreementNumber: "thakaa-fund-1", ownershipPositionId: "pos_1", roundLabel: null }),
+      updateMany: async (args: { data: Record<string, unknown> }) => {
+        ended.push(args.data);
+        return { count: 1 };
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        created.push(data);
+        return { id: "agr_new", ...data };
+      },
+    },
+  });
+  setDbStub(admin.db);
+  const result = await actions.correctInvestmentAction(
+    { error: null },
+    form({ agreementId: "agr_old", investedAmount: "125,969.85", currency: "USD", signedDate: "2024-01-01", ownershipPct: "" })
+  );
+  assert.equal(result.success, true);
+  assert.equal(ended[0].status, "Terminated");
+  assert.equal(created[0].investedAmount, "125969.85");
+  assert.equal(created[0].supersedesAgreementId, "agr_old");
+  assert.equal(created[0].ownershipPct, null);
+  assert.equal(created[0].status, "Active");
+  assert.ok(!admin.calls.includes("ownershipSnapshot.create"), "no ownership given, no snapshot");
+});
+
+test("investments: Correct rejects a bad amount without changing anything", async () => {
+  setCurrentUser(REAL_USER);
+  const admin = recordingDb(ADMIN);
+  setDbStub(admin.db);
+  const result = await actions.correctInvestmentAction(
+    { error: null },
+    form({ agreementId: "agr_old", investedAmount: "abc", currency: "USD", signedDate: "2024-01-01" })
+  );
+  assert.ok(result.fieldErrors?.investedAmount);
+  assert.ok(!admin.calls.some((c) => c.startsWith("investmentAgreement.")), "nothing touched");
+});

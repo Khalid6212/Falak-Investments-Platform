@@ -1624,6 +1624,122 @@ export async function deleteCompanyAction(_prevState: ActionState, formData: For
   redirect("/admin/manage/new-company");
 }
 
+// ============================================================
+// Correcting or removing a recorded investment (Admin)
+// ============================================================
+
+// The app's database account may change an investment's status but not
+// its terms, so a correction ends the old record (Terminated) and records
+// the corrected terms as a new one that supersedes it; Remove just ends
+// it. Terminated investments count nowhere; history stays for audit.
+const INVESTED: ("Active" | "Superseded")[] = ["Active", "Superseded"];
+
+/** Ends a recorded investment so it no longer counts anywhere. Admin only. */
+export async function removeInvestmentAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  try {
+    ({ user } = await requireFalakRole("FALAK_ADMIN"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+  const agreementId = readString(formData, "agreementId");
+  if (!agreementId) return { error: GENERIC_ERROR };
+
+  try {
+    const ended = await db.$transaction(async (tx) => {
+      const result = await tx.investmentAgreement.updateMany({
+        where: { id: agreementId, status: { in: INVESTED } },
+        data: { status: "Terminated", effectiveTo: new Date() },
+      });
+      if (result.count !== 1) return false;
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "investment_agreement.terminated",
+        targetType: "InvestmentAgreement",
+        targetId: agreementId,
+      });
+      return true;
+    });
+    if (!ended) return { error: "This investment was already removed." };
+  } catch (error) {
+    console.error("removeInvestmentAction failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
+/** Replaces a recorded investment's amount, currency, date or ownership. Admin only. */
+export async function correctInvestmentAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  try {
+    ({ user } = await requireFalakRole("FALAK_ADMIN"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+  const agreementId = readString(formData, "agreementId");
+  const investedAmount = readAmount(formData, "investedAmount");
+  const currency = readString(formData, "currency");
+  const ownershipPct = readAmount(formData, "ownershipPct");
+  const signedDateRaw = readString(formData, "signedDate");
+  const invalid = checkFields([
+    ["investedAmount", investedAmount && AMOUNT_PATTERN.test(investedAmount), FIELD.amount],
+    ["currency", currency && CURRENCIES.includes(currency as Currency), FIELD.choose],
+    ["ownershipPct", !ownershipPct || AMOUNT_PATTERN.test(ownershipPct), "Enter a decimal share, e.g. 0.10 for 10%, or leave it empty."],
+    ["signedDate", isDateInput(signedDateRaw), FIELD.date],
+  ]);
+  if (invalid || !agreementId || !investedAmount || !currency || !signedDateRaw) return invalid ?? { error: GENERIC_ERROR };
+  const signedDate = new Date(signedDateRaw);
+
+  try {
+    const done = await db.$transaction(async (tx) => {
+      const old = await tx.investmentAgreement.findFirst({
+        where: { id: agreementId, status: { in: INVESTED } },
+        select: { id: true, agreementNumber: true, ownershipPositionId: true, roundLabel: true },
+      });
+      if (!old) return false;
+      const ended = await tx.investmentAgreement.updateMany({
+        where: { id: old.id, status: { in: INVESTED } },
+        data: { status: "Terminated", effectiveTo: new Date() },
+      });
+      if (ended.count !== 1) return false;
+      const corrected = await tx.investmentAgreement.create({
+        data: {
+          agreementNumber: `${old.agreementNumber.slice(0, 100)}-c${Date.now().toString(36)}`,
+          ownershipPositionId: old.ownershipPositionId,
+          roundLabel: old.roundLabel,
+          signedDate,
+          effectiveFrom: signedDate,
+          investedAmount,
+          currency: currency as Currency,
+          ownershipPct: ownershipPct || null,
+          status: "Active",
+          supersedesAgreementId: old.id,
+        },
+      });
+      if (ownershipPct) {
+        await tx.ownershipSnapshot.create({
+          data: { ownershipPositionId: old.ownershipPositionId, asOfDate: signedDate, ownershipPct, source: "admin" },
+        });
+      }
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "investment_agreement.corrected",
+        targetType: "InvestmentAgreement",
+        targetId: corrected.id,
+        meta: { replaces: old.id },
+      });
+      return true;
+    });
+    if (!done) return { error: "This investment was changed or removed meanwhile. Reload and try again." };
+  } catch (error) {
+    console.error("correctInvestmentAction failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
 /** Deletes a vehicle from the platform. Admin only. */
 export async function deleteVehicleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   let user;

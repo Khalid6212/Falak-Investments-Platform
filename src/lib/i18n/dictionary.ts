@@ -617,6 +617,10 @@ export interface Dictionary {
     templateColumn: string;
     viewOnDashboardAction: string;
     formattedReportAction: string;
+    correctAction: string;
+    removeAction: string;
+    removeConfirm: string;
+    correctionNote: string;
   };
   lists: {
     searchPlaceholder: string;
@@ -1355,6 +1359,10 @@ export const en = {
     templateColumn: "Template",
     viewOnDashboardAction: "View dashboard",
     formattedReportAction: "Formatted report",
+    correctAction: "Correct",
+    removeAction: "Remove",
+    removeConfirm: "Remove this investment? It will stop counting in every total; the record stays in the audit history.",
+    correctionNote: "Saving replaces this record with the corrected one; the original stays in the audit history.",
   },
   lists: {
     searchPlaceholder: "Search…",
@@ -2093,6 +2101,10 @@ export const ar = {
     templateColumn: "القالب",
     viewOnDashboardAction: "عرض لوحة المعلومات",
     formattedReportAction: "التقرير المنسق",
+    correctAction: "تصحيح",
+    removeAction: "إزالة",
+    removeConfirm: "إزالة هذا الاستثمار؟ لن يُحتسب بعد الآن في أي إجمالي، ويبقى السجل في سجل التدقيق.",
+    correctionNote: "يستبدل الحفظ هذا السجل بالسجل المصحح، ويبقى الأصل في سجل التدقيق.",
   },
   lists: {
     searchPlaceholder: "بحث…",

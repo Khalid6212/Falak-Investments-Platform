@@ -31,7 +31,7 @@ function toDateOnly(date: Date): string {
 async function requireCompanyReportViewer(
   companyId: string,
   companyDepartment: Department
-): Promise<{ viewerRole: CompanyReportViewerRole }> {
+): Promise<{ viewerRole: CompanyReportViewerRole; isAdmin: boolean }> {
   try {
     const scope = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
     if (scope.departments && !scope.departments.includes(companyDepartment)) {
@@ -42,12 +42,12 @@ async function requireCompanyReportViewer(
       // "unknown slug" null the page already returns for a non-member.
       throw new ForbiddenError();
     }
-    return { viewerRole: "FALAK_STAFF" };
+    return { viewerRole: "FALAK_STAFF", isAdmin: scope.role === "FALAK_ADMIN" };
   } catch (error) {
     if (!(error instanceof ForbiddenError)) throw error;
   }
   await requireCompanyMembership(companyId, "MEMBER");
-  return { viewerRole: "COMPANY_MEMBER" };
+  return { viewerRole: "COMPANY_MEMBER", isAdmin: false };
 }
 
 /**
@@ -130,7 +130,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
           agreements: {
             where: { status: { in: ["Active", "Superseded"] } },
             orderBy: { signedDate: "asc" },
-            select: { signedDate: true, investedAmount: true, currency: true, ownershipPct: true },
+            select: { id: true, signedDate: true, investedAmount: true, currency: true, ownershipPct: true },
           },
         },
       },
@@ -143,7 +143,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
 
   if (!company) return null;
 
-  const { viewerRole } = await requireCompanyReportViewer(company.id, company.department);
+  const { viewerRole, isAdmin } = await requireCompanyReportViewer(company.id, company.department);
 
   const periods: CompanyReportPeriodOption[] = company.cycles
     .map((cycle) => ({
@@ -230,6 +230,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
       ? company.ownershipPositions.flatMap((p) =>
           p.vehicle
             ? (p.agreements ?? []).map((a) => ({
+                id: a.id,
                 vehicleId: p.vehicle!.id,
                 vehicleSlug: p.vehicle!.slug,
                 vehicleNameEn: p.vehicle!.nameEn,
@@ -243,5 +244,5 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
         )
       : [];
 
-  return { company: companyDTO, periods, linkedVehicles, viewerRole, valuations, investments };
+  return { company: companyDTO, periods, linkedVehicles, viewerRole, valuations, investments, canManageInvestments: isAdmin };
 }

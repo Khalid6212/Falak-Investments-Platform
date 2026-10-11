@@ -246,6 +246,7 @@ test("profile data: Falak staff see investment agreements; the startup's own mem
   const staff = await getCompanyReportData("tadween-saas");
   assert.deepEqual(staff!.investments, [
     {
+      id: "agr_1",
       vehicleId: "veh_1",
       vehicleSlug: "fund-one",
       vehicleNameEn: "Fund One",
@@ -266,4 +267,6 @@ test("profile data: Falak staff see investment agreements; the startup's own mem
   );
   const member = await getCompanyReportData("tadween-saas");
   assert.deepEqual(member!.investments, []);
+  assert.equal(member!.canManageInvestments, false);
+  assert.equal(staff!.canManageInvestments, true, "Admin");
 });
