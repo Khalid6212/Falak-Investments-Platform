@@ -1,20 +1,60 @@
 import "server-only";
 import { Resend } from "resend";
 
-// EMAIL_FROM switches the sender without a code change, e.g.
-// "Falak Investments <noreply@falak.sa>". Its domain must be verified in the
-// Resend account that RESEND_API_KEY belongs to, or every send fails.
-const FROM_ADDRESS = process.env.EMAIL_FROM?.trim() || "Falak Portfolio Platform <noreply@falakinvestments.space>";
+// Outbound email goes through deliver() below: Mailgun when MAILGUN_SECRET
+// and MAILGUN_DOMAIN are set, otherwise Resend (RESEND_API_KEY).
+//
+// Sender: MAIL_FROM_NAME + MAIL_FROM_ADDRESS (e.g. Angel Space <info@falak.sa>),
+// else EMAIL_FROM, else the platform default. Replies go to the sender
+// address. Its domain must be one the provider is set up to send for.
+function fromAddress(): { from: string; replyTo: string | null } {
+  const address = process.env.MAIL_FROM_ADDRESS?.trim();
+  if (address) {
+    const name = process.env.MAIL_FROM_NAME?.trim().replace(/^"|"$/g, "");
+    return { from: name ? `${name} <${address}>` : address, replyTo: address };
+  }
+  return { from: process.env.EMAIL_FROM?.trim() || "Falak Portfolio Platform <noreply@falakinvestments.space>", replyTo: null };
+}
 
-let client: Resend | null = null;
+interface Message {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
 
-function getClient(): Resend {
+let resendClient: Resend | null = null;
+
+async function deliver(message: Message, what: string): Promise<void> {
+  const { from, replyTo } = fromAddress();
+  const mailgunKey = process.env.MAILGUN_SECRET?.trim();
+  const mailgunDomain = process.env.MAILGUN_DOMAIN?.trim();
+
+  if (mailgunKey && mailgunDomain) {
+    const endpoint = process.env.MAILGUN_ENDPOINT?.trim() || "api.mailgun.net";
+    const body = new URLSearchParams({ from, to: message.to, subject: message.subject, html: message.html, text: message.text });
+    if (replyTo) body.set("h:Reply-To", replyTo);
+    const response = await fetch(`https://${endpoint}/v3/${encodeURIComponent(mailgunDomain)}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${Buffer.from(`api:${mailgunKey}`).toString("base64")}` },
+      body,
+    });
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => "")).slice(0, 300);
+      throw new Error(`Failed to send ${what} email: Mailgun ${response.status} ${detail}`);
+    }
+    return;
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    throw new Error("RESEND_API_KEY is not set.");
+    throw new Error("No email provider is configured (set MAILGUN_SECRET and MAILGUN_DOMAIN, or RESEND_API_KEY).");
   }
-  client ??= new Resend(apiKey);
-  return client;
+  resendClient ??= new Resend(apiKey);
+  const { error } = await resendClient.emails.send({ from, to: message.to, subject: message.subject, html: message.html, text: message.text, ...(replyTo ? { replyTo } : {}) });
+  if (error) {
+    throw new Error(`Failed to send ${what} email: ${error.message}`);
+  }
 }
 
 /**
@@ -27,17 +67,15 @@ function getClient(): Resend {
  * silently swallowing a genuine delivery failure.
  */
 export async function sendSignInEmail(to: string, verifyUrl: string): Promise<void> {
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: "Sign in to Falak Portfolio Platform",
-    html: `<p>Click the link below to sign in. This link expires in 15 minutes and can only be used once.</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
-    text: `Click the link below to sign in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send sign-in email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: "Sign in to Falak Portfolio Platform",
+      html: `<p>Click the link below to sign in. This link expires in 15 minutes and can only be used once.</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+      text: `Click the link below to sign in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}`,
+    },
+    "sign-in"
+  );
 }
 
 /**
@@ -47,17 +85,15 @@ export async function sendSignInEmail(to: string, verifyUrl: string): Promise<vo
  * token type) even though the HTML shape is near-identical.
  */
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: "Reset your Falak Portfolio Platform password",
-    html: `<p>Click the link below to set a new password. This link expires in 30 minutes and can only be used once.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
-    text: `Click the link below to set a new password. This link expires in 30 minutes and can only be used once.\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.`,
-  });
-  if (error) {
-    throw new Error(`Failed to send password reset email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: "Reset your Falak Portfolio Platform password",
+      html: `<p>Click the link below to set a new password. This link expires in 30 minutes and can only be used once.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+      text: `Click the link below to set a new password. This link expires in 30 minutes and can only be used once.\n\n${resetUrl}\n\nIf you didn't request this, you can ignore this email.`,
+    },
+    "password reset"
+  );
 }
 
 /**
@@ -68,22 +104,20 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
  * person, so they still go through the normal passwordless sign-in flow.
  */
 export async function sendAccessApprovedEmail(to: string): Promise<void> {
-  const resend = getClient();
   const baseUrl = process.env.APP_BASE_URL;
   if (!baseUrl) {
     throw new Error("APP_BASE_URL is not set.");
   }
   const signInUrl = `${baseUrl}/sign-in`;
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: "Your Falak Portfolio Platform access has been approved",
-    html: `<p>Your access request has been approved. Sign in below to get started.</p><p><a href="${signInUrl}">${signInUrl}</a></p>`,
-    text: `Your access request has been approved. Sign in to get started.\n\n${signInUrl}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send access-approved email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: "Your Falak Portfolio Platform access has been approved",
+      html: `<p>Your access request has been approved. Sign in below to get started.</p><p><a href="${signInUrl}">${signInUrl}</a></p>`,
+      text: `Your access request has been approved. Sign in to get started.\n\n${signInUrl}`,
+    },
+    "access-approved"
+  );
 }
 
 /**
@@ -99,17 +133,15 @@ export async function sendDeadlineReminderEmail(
   deadline: string,
   formUrl: string
 ): Promise<void> {
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `Reminder: ${periodLabel} report due ${deadline} -- ${companyName}`,
-    html: `<p>Your ${periodLabel} report for ${companyName} is due on ${deadline}.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
-    text: `Your ${periodLabel} report for ${companyName} is due on ${deadline}.\n\n${formUrl}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send deadline-reminder email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: `Reminder: ${periodLabel} report due ${deadline} -- ${companyName}`,
+      html: `<p>Your ${periodLabel} report for ${companyName} is due on ${deadline}.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
+      text: `Your ${periodLabel} report for ${companyName} is due on ${deadline}.\n\n${formUrl}`,
+    },
+    "deadline-reminder"
+  );
 }
 
 const escapeHtml = (s: string) =>
@@ -128,17 +160,15 @@ export async function sendReportRequestEmail(
   const action = isInvite
     ? "Accept the invitation below to set up your access, then fill in the report."
     : "Open the reporting form below to fill it in.";
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `Falak report request: ${periodLabel} -- ${companyName}`,
-    html: `<p>Falak Ventures has requested the ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)}, due on ${escapeHtml(deadline)}.</p><p>${action}</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
-    text: `Falak Ventures has requested the ${periodLabel} report for ${companyName}, due on ${deadline}.\n\n${action}\n\n${url}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send report-request email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: `Falak report request: ${periodLabel} -- ${companyName}`,
+      html: `<p>Falak Ventures has requested the ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)}, due on ${escapeHtml(deadline)}.</p><p>${action}</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
+      text: `Falak Ventures has requested the ${periodLabel} report for ${companyName}, due on ${deadline}.\n\n${action}\n\n${url}`,
+    },
+    "report-request"
+  );
 }
 
 /**
@@ -153,17 +183,15 @@ export async function sendOverdueReminderEmail(
   deadline: string,
   formUrl: string
 ): Promise<void> {
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `Overdue: ${periodLabel} report -- ${companyName}`,
-    html: `<p>The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
-    text: `The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.\n\n${formUrl}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send overdue-reminder email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: `Overdue: ${periodLabel} report -- ${companyName}`,
+      html: `<p>The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
+      text: `The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.\n\n${formUrl}`,
+    },
+    "overdue-reminder"
+  );
 }
 
 /**
@@ -178,15 +206,13 @@ export async function sendReportPublishedEmail(
   periodLabel: string,
   reportUrl: string
 ): Promise<void> {
-  const resend = getClient();
-  const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to,
-    subject: `New report available: ${companyName} -- ${periodLabel}`,
-    html: `<p>A new ${periodLabel} report for ${companyName} has been published and is available for you to view.</p><p><a href="${reportUrl}">${reportUrl}</a></p>`,
-    text: `A new ${periodLabel} report for ${companyName} has been published and is available for you to view.\n\n${reportUrl}`,
-  });
-  if (error) {
-    throw new Error(`Failed to send report-published email: ${error.message}`);
-  }
+  await deliver(
+    {
+      to,
+      subject: `New report available: ${companyName} -- ${periodLabel}`,
+      html: `<p>A new ${periodLabel} report for ${companyName} has been published and is available for you to view.</p><p><a href="${reportUrl}">${reportUrl}</a></p>`,
+      text: `A new ${periodLabel} report for ${companyName} has been published and is available for you to view.\n\n${reportUrl}`,
+    },
+    "report-published"
+  );
 }
