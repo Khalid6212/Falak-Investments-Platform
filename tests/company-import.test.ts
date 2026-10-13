@@ -98,3 +98,36 @@ test("company import: a file without the template's headers is refused as a whol
   assert.match(error ?? "", /header row is missing/);
   assert.equal(rows.length, 0);
 });
+
+test("company import: the link-name column forgives websites, capitals and spaces instead of failing the row", async () => {
+  const { linkNameFrom } = await import("../src/lib/admin/company-import.ts");
+  assert.equal(linkNameFrom("https://www.LeadFlow.io/about", "LeadFlow"), "leadflow");
+  assert.equal(linkNameFrom("thakaamed.ai", "Thakaamed"), "thakaamed");
+  assert.equal(linkNameFrom("Handl Hub", "Handl Hub"), "handl-hub");
+  assert.equal(linkNameFrom("", "Ajeer Pay"), "ajeer-pay");
+  assert.equal(linkNameFrom("ــ", "Syntera AI"), "syntera-ai", "unusable text falls back to the name");
+
+  const file = await filledTemplate([
+    { ...VALID, "Name (English)": "LeadFlow", "Platform link name (optional)": "https://www.leadflow.io" },
+    { ...VALID, "Name (English)": "Handl Hub", "Platform link name (optional)": "Handl Hub" },
+    { ...VALID, "Name (English)": "QURK", "Platform link name (optional)": "leadflow" },
+  ]);
+  const { rows } = await parseCompanyImport(file, null, NONE);
+  assert.deepEqual(rows.map((r) => r.problems), [[], [], []]);
+  assert.deepEqual(rows.map((r) => r.input!.slug), ["leadflow", "handl-hub", "leadflow-2"]);
+});
+
+test("company import: a file made from the earlier template (old column header) still works", async () => {
+  const book = new ExcelJS.Workbook();
+  await book.xlsx.load(await buildCompanyImportTemplate());
+  const sheet = book.getWorksheet("Startups")!;
+  const col: Record<string, number> = {};
+  sheet.getRow(1).eachCell((cell, c) => (col[cell.text.replace(" *", "")] = c));
+  sheet.getCell(1, col["Platform link name (optional)"]).value = "Web address (optional)";
+  for (const [header, value] of Object.entries({ ...VALID, "Name (English)": "EyeGo" })) sheet.getCell(2, col[header]).value = value;
+  sheet.getCell(2, col["Platform link name (optional)"]).value = "www.eyego.com";
+  const out = await book.xlsx.writeBuffer();
+  const { rows } = await parseCompanyImport((out as Uint8Array).buffer.slice(0) as ArrayBuffer, null, NONE);
+  assert.deepEqual(rows[0].problems, []);
+  assert.equal(rows[0].input!.slug, "eyego");
+});

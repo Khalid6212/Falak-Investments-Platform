@@ -46,6 +46,8 @@ interface Column {
   list?: ListKey;
   width: number;
   note?: string;
+  /** Earlier header texts still recognised in uploaded files. */
+  aliases?: string[];
 }
 
 const COLUMNS: Column[] = [
@@ -65,7 +67,14 @@ const COLUMNS: Column[] = [
   { field: "founderPhone", header: "Founder phone", required: false, width: 20 },
   { field: "hqCity", header: "HQ city", required: false, width: 18 },
   { field: "hqCountry", header: "HQ country", required: false, list: "country", width: 24 },
-  { field: "slug", header: "Web address (optional)", required: false, width: 24, note: "Made from the English name when empty." },
+  {
+    field: "slug",
+    header: "Platform link name (optional)",
+    required: false,
+    width: 28,
+    note: "Short name used in this startup's link on the platform, e.g. leadflow. Leave empty to build it from the English name. Not the company website.",
+    aliases: ["Web address (optional)"],
+  },
 ];
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
@@ -74,6 +83,27 @@ function match(raw: string, options: Option[]): string | null {
   const n = normalize(raw);
   if (!n) return null;
   return options.find((o) => o.labels.some((l) => l && normalize(l) === n))?.value ?? null;
+}
+
+/**
+ * The startup's link name (slug) from whatever was typed in that column:
+ * a website becomes its site name ("https://www.leadflow.io" -> "leadflow"),
+ * anything else is tidied into lowercase-with-hyphens, and an empty or
+ * unusable value falls back to the English name. Never an error by itself.
+ */
+export function linkNameFrom(raw: string, nameEn: string): string {
+  const value = raw.trim();
+  let candidate = "";
+  if (value) {
+    const looksLikeSite = /^(https?:\/\/|www\.)/i.test(value) || (/\./.test(value) && !/\s/.test(value));
+    if (looksLikeSite) {
+      const host = value.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split(/[/?#:]/)[0];
+      candidate = slugify(host.split(".")[0] ?? "");
+    } else {
+      candidate = slugify(value);
+    }
+  }
+  return (candidate || slugify(nameEn)).slice(0, 74).replace(/-+$/, "");
 }
 
 /** The import template: a sheet to fill in, with dropdowns, plus instructions. */
@@ -132,6 +162,7 @@ export async function buildCompanyImportTemplate(): Promise<Buffer> {
     `1. Fill in one startup per row on the "${SHEET_NAME}" sheet, starting on row 2. Columns marked * are required.`,
     "2. Use the dropdowns for Industry, Customer model, Currency, stages, Department and HQ country (English or Arabic labels both work).",
     '3. Industry "Other": also fill in both "Other industry" columns.',
+    '   "Platform link name" is optional: it is the short name in the startup\'s link on this platform, not its website. Leave it empty.',
     "4. Revenue models: any of SaaS, Marketplace, E-Commerce, Transaction-Based, Subscription, Other, separated by commas.",
     `5. Up to ${MAX_IMPORT_ROWS} startups per file. Don't rename the "${SHEET_NAME}" sheet or its header row.`,
     "6. Upload the file, click Check file, review any problems, then click Import. Only rows without problems are imported.",
@@ -182,7 +213,7 @@ export async function parseCompanyImport(
   const columnOf: Record<string, number> = {};
   sheet.getRow(1).eachCell((cell, col) => {
     const text = normalize(cell.text.replace(/\*/g, ""));
-    const column = COLUMNS.find((c) => normalize(c.header) === text);
+    const column = COLUMNS.find((c) => [c.header, ...(c.aliases ?? [])].some((h) => normalize(h) === text));
     if (column) columnOf[column.field] = col;
   });
   const missing = COLUMNS.filter((c) => c.required && !columnOf[c.field]).map((c) => c.header);
@@ -236,16 +267,13 @@ export async function parseCompanyImport(
       else problems.push(`Revenue models: "${raw}" isn't one of the listed options.`);
     }
 
-    // Web address: the one given, or made from the English name and made
-    // unique (-2, -3, ...) when that one is taken.
-    const givenSlug = get("slug").toLowerCase();
-    let slug = givenSlug || slugify(nameEn);
-    if (givenSlug && slugsTaken.has(slug)) problems.push(`Web address: "${slug}" is already used.`);
-    if (!givenSlug && slug) {
-      const base = slug.slice(0, 74);
-      for (let n = 2; slugsTaken.has(slug); n++) slug = `${base}-${n}`;
-    }
-    if (!slug) problems.push("Web address: add one (letters and numbers), since the English name has none to build it from.");
+    // Link name: tidied from what was typed (or the English name), then
+    // made unique (-2, -3, ...) when taken. Only a problem when neither
+    // gives any Latin letters or digits to build it from.
+    const base = linkNameFrom(get("slug"), nameEn);
+    let slug = base;
+    for (let n = 2; slug && slugsTaken.has(slug); n++) slug = `${base}-${n}`;
+    if (!slug) problems.push("Platform link name: type a short name in English letters (e.g. startup-x); the English name has none to build it from.");
     fd.set("slug", slug);
 
     const { errors, input } = validateCompany(fd, scope);
