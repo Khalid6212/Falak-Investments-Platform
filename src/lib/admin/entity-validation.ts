@@ -55,6 +55,7 @@ const MSG = {
   revenueModels: "Choose only from the listed options.",
   email: "Enter a valid email address, e.g. name@company.com.",
   phone: "Enter a valid phone number, e.g. +966 5X XXX XXXX.",
+  website: "Enter a website, e.g. www.company.com.",
   optionalText: `Up to ${MAX_NAME_LENGTH} characters.`,
   description: `Up to ${MAX_DESCRIPTION_LENGTH} characters.`,
   vintageYear: `Enter a year between ${MIN_VINTAGE_YEAR} and ${MAX_VINTAGE_YEAR}, or leave it empty.`,
@@ -113,6 +114,25 @@ export interface CompanyInput {
   founderPhone: string | null;
   hqCity: string | null;
   hqCountry: string | null;
+  website: string | null;
+}
+
+/**
+ * A website as typed ("leadflow.io", "www.leadflow.io", "https://...") as a
+ * full address, or null when it isn't one. Only http(s) sites with a real
+ * domain; the scheme is added when missing so the link always works.
+ */
+export function normalizeWebsite(raw: string): string | null {
+  const value = raw.trim();
+  if (!value || /\s/.test(value) || value.length > MAX_NAME_LENGTH) return null;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (!/^[^.]+(\.[^.]+)+$/.test(url.hostname)) return null;
+    return url.href.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
 }
 
 export function validateCompany(formData: FormData, scope: Department[] | null): Validated<CompanyInput> {
@@ -129,6 +149,7 @@ export function validateCompany(formData: FormData, scope: Department[] | null):
     founderPhone: read(formData, "founderPhone"),
     hqCity: read(formData, "hqCity"),
     hqCountry: read(formData, "hqCountry"),
+    website: read(formData, "website"),
     currency: read(formData, "currency"),
     entryStage: read(formData, "entryStage"),
     currentStage: read(formData, "currentStage"),
@@ -161,6 +182,8 @@ export function validateCompany(formData: FormData, scope: Department[] | null):
     errors.founderEmail = MSG.email;
   }
   if (v.founderPhone && !PHONE_PATTERN.test(v.founderPhone)) errors.founderPhone = MSG.phone;
+  const website = v.website ? normalizeWebsite(v.website) : null;
+  if (v.website && !website) errors.website = MSG.website;
   if (v.hqCountry && !oneOf(v.hqCountry, COUNTRY_CODES)) errors.hqCountry = MSG.choose;
   if (!oneOf(v.customerModel, CUSTOMER_MODELS)) errors.customerModel = MSG.choose;
   if (!oneOf(v.currency, CURRENCIES)) errors.currency = MSG.choose;
@@ -185,6 +208,7 @@ export function validateCompany(formData: FormData, scope: Department[] | null):
       founderPhone: v.founderPhone || null,
       hqCity: v.hqCity || null,
       hqCountry: v.hqCountry || null,
+      website,
       customerModel: v.customerModel as CustomerModel,
       currency: v.currency as Currency,
       entryStage: v.entryStage as FundingStage,

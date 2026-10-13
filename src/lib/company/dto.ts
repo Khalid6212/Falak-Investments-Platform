@@ -92,6 +92,7 @@ export interface CompanyReportDTO {
   founderPhone: string | null;
   hqCity: string | null;
   hqCountry: string | null;
+  website: string | null;
   department: Department;
   archivedAt: string | null;
   periods: Record<string, CompanyReportPeriodData>;

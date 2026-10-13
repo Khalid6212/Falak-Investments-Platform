@@ -29,6 +29,13 @@ export function CompanyInfoCard({ company, showDepartment = false }: { company: 
             {[company.hqCity, company.hqCountry ? countryName(company.hqCountry, lang) : null].filter(Boolean).join(", ")}
           </Row>
         ) : null}
+        {company.website ? (
+          <Row label={t.admin.manage.websiteShortLabel}>
+            <a href={company.website} target="_blank" rel="noopener noreferrer" dir="ltr" className="text-link-foreground underline-offset-2 hover:underline">
+              {company.website.replace(/^https?:\/\//, "")}
+            </a>
+          </Row>
+        ) : null}
         {company.founderName || company.founderEmail || company.founderPhone ? (
           <Row label={t.admin.manage.founderLabel}>
             {company.founderName ? <span className="block">{company.founderName}</span> : null}

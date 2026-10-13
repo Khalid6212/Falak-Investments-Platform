@@ -30,6 +30,7 @@ export async function getCompanyForEdit(id: string) {
     founderPhone: c.founderPhone ?? "",
     hqCity: c.hqCity ?? "",
     hqCountry: c.hqCountry ?? "",
+    website: c.website ?? "",
     revenueModels: c.revenueModels as string[],
     currency: c.currency,
     entryStage: c.entryStage,

@@ -259,6 +259,8 @@ model Company {
   founderPhone  String?
   hqCity        String?
   hqCountry     String?
+  // The startup's own website, stored with its scheme (https://...).
+  website       String?
   archivedAt    DateTime?
   // Set by Delete: the startup is hidden everywhere (even where archived
   // ones still show) while its history stays in the database.

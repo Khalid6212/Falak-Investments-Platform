@@ -67,14 +67,10 @@ const COLUMNS: Column[] = [
   { field: "founderPhone", header: "Founder phone", required: false, width: 20 },
   { field: "hqCity", header: "HQ city", required: false, width: 18 },
   { field: "hqCountry", header: "HQ country", required: false, list: "country", width: 24 },
-  {
-    field: "slug",
-    header: "Platform link name (optional)",
-    required: false,
-    width: 28,
-    note: "Short name used in this startup's link on the platform, e.g. leadflow. Leave empty to build it from the English name. Not the company website.",
-    aliases: ["Web address (optional)"],
-  },
+  // "Web address (optional)" was this column's header in the first template
+  // (meant as the platform link name, but read -- and filled in -- as the
+  // startup's website), so files made from it are taken as websites.
+  { field: "website", header: "Website", required: false, width: 30, note: "The startup's own website, e.g. www.company.com.", aliases: ["Web address (optional)", "Website (optional)"] },
 ];
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
@@ -162,7 +158,7 @@ export async function buildCompanyImportTemplate(): Promise<Buffer> {
     `1. Fill in one startup per row on the "${SHEET_NAME}" sheet, starting on row 2. Columns marked * are required.`,
     "2. Use the dropdowns for Industry, Customer model, Currency, stages, Department and HQ country (English or Arabic labels both work).",
     '3. Industry "Other": also fill in both "Other industry" columns.',
-    '   "Platform link name" is optional: it is the short name in the startup\'s link on this platform, not its website. Leave it empty.',
+    "   Names are saved exactly as you type them.",
     "4. Revenue models: any of SaaS, Marketplace, E-Commerce, Transaction-Based, Subscription, Other, separated by commas.",
     `5. Up to ${MAX_IMPORT_ROWS} startups per file. Don't rename the "${SHEET_NAME}" sheet or its header row.`,
     "6. Upload the file, click Check file, review any problems, then click Import. Only rows without problems are imported.",
@@ -261,19 +257,22 @@ export async function parseCompanyImport(
     choice("department", "department", singleDepartment ?? "");
     choice("hqCountry", "country");
     for (const f of ["founderName", "founderEmail", "founderPhone", "hqCity"]) fd.set(f, get(f));
+    // "-" or "N/A" in the Website column means there is none.
+    const website = get("website");
+    fd.set("website", /^(-+|n\/?a|none|nil)$/i.test(website) ? "" : website);
     for (const raw of get("revenueModels").split(/[,،;\n]/).map((s) => s.trim()).filter(Boolean)) {
       const value = match(raw, OPTIONS.revenueModel);
       if (value) fd.append("revenueModels", value);
       else problems.push(`Revenue models: "${raw}" isn't one of the listed options.`);
     }
 
-    // Link name: tidied from what was typed (or the English name), then
-    // made unique (-2, -3, ...) when taken. Only a problem when neither
-    // gives any Latin letters or digits to build it from.
-    const base = linkNameFrom(get("slug"), nameEn);
+    // The startup's link on the platform is built from its English name
+    // (the name itself is stored exactly as typed), made unique (-2, -3,
+    // ...) when taken.
+    const base = linkNameFrom("", nameEn);
     let slug = base;
     for (let n = 2; slug && slugsTaken.has(slug); n++) slug = `${base}-${n}`;
-    if (!slug) problems.push("Platform link name: type a short name in English letters (e.g. startup-x); the English name has none to build it from.");
+    if (!slug) problems.push("Name (English): needs at least one English letter or digit.");
     fd.set("slug", slug);
 
     const { errors, input } = validateCompany(fd, scope);

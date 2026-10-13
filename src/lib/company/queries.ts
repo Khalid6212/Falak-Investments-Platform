@@ -87,6 +87,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
       founderPhone: true,
       hqCity: true,
       hqCountry: true,
+      website: true,
       archivedAt: true,
       department: true,
       cycles: {
@@ -214,6 +215,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
     founderPhone: company.founderPhone ?? null,
     hqCity: company.hqCity ?? null,
     hqCountry: company.hqCountry ?? null,
+    website: company.website ?? null,
     department: company.department,
     archivedAt: company.archivedAt?.toISOString() ?? null,
     periods: periodsData,

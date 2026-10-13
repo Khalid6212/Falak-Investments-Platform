@@ -270,6 +270,8 @@ export interface Dictionary {
       founderEmailLabel: string;
       founderPhoneLabel: string;
       hqCityLabel: string;
+      websiteLabel: string;
+      websiteShortLabel: string;
       hqCountryLabel: string;
       founderSectionTitle: string;
       headquartersLabel: string;
@@ -1028,6 +1030,8 @@ export const en = {
       founderEmailLabel: "Founder Email",
       founderPhoneLabel: "Founder Phone",
       hqCityLabel: "HQ City",
+      websiteLabel: "Website (optional)",
+      websiteShortLabel: "Website",
       hqCountryLabel: "HQ Country",
       founderSectionTitle: "Founder & Headquarters",
       headquartersLabel: "Headquarters",
@@ -1792,6 +1796,8 @@ export const ar = {
       founderEmailLabel: "البريد الإلكتروني للمؤسس",
       founderPhoneLabel: "هاتف المؤسس",
       hqCityLabel: "مدينة المقر الرئيسي",
+      websiteLabel: "الموقع الإلكتروني (اختياري)",
+      websiteShortLabel: "الموقع الإلكتروني",
       hqCountryLabel: "دولة المقر الرئيسي",
       founderSectionTitle: "المؤسس والمقر الرئيسي",
       headquartersLabel: "المقر الرئيسي",

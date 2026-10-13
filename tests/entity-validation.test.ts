@@ -118,3 +118,17 @@ test("investor: contact details and brief are optional; given ones are checked a
   assert.ok(bad.errors.contactPhone);
   assert.ok(bad.errors.briefEn);
 });
+
+test("company: website is optional, gets its scheme added, and rejects non-websites", async () => {
+  const { normalizeWebsite } = await import("../src/lib/admin/entity-validation.ts");
+  assert.equal(normalizeWebsite("www.thakaamed.ai"), "https://www.thakaamed.ai");
+  assert.equal(normalizeWebsite("https://thakaamed.ai/"), "https://thakaamed.ai");
+  assert.equal(normalizeWebsite("http://example.com/about"), "http://example.com/about");
+  assert.equal(normalizeWebsite("not a website"), null);
+  assert.equal(normalizeWebsite("localhost"), null);
+  assert.equal(normalizeWebsite("javascript:alert(1)"), null);
+
+  assert.equal(validateCompany(form(GOOD_COMPANY), null).input?.website, null);
+  assert.equal(validateCompany(form({ ...GOOD_COMPANY, website: "thakaamed.ai" }), null).input?.website, "https://thakaamed.ai");
+  assert.ok(validateCompany(form({ ...GOOD_COMPANY, website: "nope" }), null).errors.website);
+});

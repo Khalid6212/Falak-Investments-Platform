@@ -34,6 +34,7 @@ export interface CompanyFormValues {
   founderEmail: string;
   founderPhone: string;
   hqCity: string;
+  website: string;
   hqCountry: string;
   revenueModels: string[];
   currency: string;
@@ -236,6 +237,11 @@ function CompanyFields({
           ))}
         </Select>
         <FieldError state={state} id="c-hqCountry" name="hqCountry" />
+      </div>
+      <div className={fieldClass}>
+        <label className={labelClass} htmlFor="c-website">{t.admin.manage.websiteLabel}</label>
+        <Input {...field("c-website", "website")} defaultValue={value("website")} dir="ltr" inputMode="url" placeholder="www.company.com" autoComplete="off" />
+        <FieldError state={state} id="c-website" name="website" />
       </div>
       <fieldset className="sm:col-span-2" aria-describedby={state.fieldErrors?.revenueModels ? "c-revenueModels-error" : undefined}>
         <legend className={labelClass}>{t.admin.manage.revenueModelsLabel}</legend>
