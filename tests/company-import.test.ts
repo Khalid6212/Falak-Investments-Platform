@@ -5,7 +5,30 @@ import ExcelJS from "exceljs";
 // Imports the REAL production module via tests/support/mock-loader.mjs.
 const { buildCompanyImportTemplate, parseCompanyImport } = await import("../src/lib/admin/company-import.ts");
 
-const NONE = { names: new Set<string>(), slugs: new Set<string>() };
+const NONE = { companies: [], slugs: new Set<string>() };
+
+// A startup already on the platform, with no website or founder details yet.
+const EXISTING = {
+  id: "co_1",
+  slug: "existing-co",
+  nameEn: "Existing Co",
+  nameAr: "الشركة الحالية",
+  sectorEn: "Healthtech",
+  sectorAr: "التقنية الصحية",
+  customerModel: "B2B",
+  revenueModels: ["SaaS"],
+  currency: "USD",
+  entryStage: "PreSeed",
+  currentStage: "Seed",
+  department: "InvestmentDepartment",
+  founderName: null,
+  founderEmail: null,
+  founderPhone: null,
+  hqCity: "Riyadh",
+  hqCountry: "SA",
+  website: null,
+} as const;
+const withExisting = () => ({ companies: [{ ...EXISTING, revenueModels: [...EXISTING.revenueModels] }], slugs: new Set(["existing-co"]) });
 
 /** Fills the real template's Startups sheet, keyed by header text (without the "*"). */
 async function filledTemplate(rows: Record<string, string>[]): Promise<ArrayBuffer> {
@@ -62,22 +85,68 @@ test("company import: Arabic labels and internal codes are accepted too", async 
   assert.equal(rows[0].input!.currency, "SAR");
 });
 
-test("company import: bad values, duplicates and taken web addresses are reported per row", async () => {
+test("company import: bad values, repeats and taken link names are reported per row", async () => {
   const file = await filledTemplate([
     { ...VALID, "Name (English)": "Alpha", "Entry stage": "Series Z" },
-    { ...VALID, "Name (English)": "Existing Co" },
     { ...VALID, "Name (English)": "Beta" },
     { ...VALID, "Name (English)": "Beta" },
     { ...VALID, "Name (English)": "Gamma", "Name (Arabic)": "" },
   ]);
-  const { rows } = await parseCompanyImport(file, null, { names: new Set(["existing co"]), slugs: new Set(["beta"]) });
+  const { rows } = await parseCompanyImport(file, null, { companies: [], slugs: new Set(["beta"]) });
   assert.match(rows[0].problems.join(" "), /Entry stage: "Series Z" isn't one of the listed options/);
-  assert.deepEqual(rows[1].problems, ["Already on the platform."]);
-  assert.deepEqual(rows[2].problems, [], "a taken auto web address gets a suffix");
-  assert.equal(rows[2].input!.slug, "beta-2");
-  assert.deepEqual(rows[3].problems, ["Appears more than once in this file."]);
-  assert.match(rows[4].problems.join(" "), /Name \(Arabic\)/);
+  assert.deepEqual(rows[1].problems, [], "a taken auto link name gets a suffix");
+  assert.equal(rows[1].input!.slug, "beta-2");
+  assert.deepEqual(rows[2].problems, ["Appears more than once in this file."]);
+  assert.match(rows[3].problems.join(" "), /Name \(Arabic\)/);
   assert.equal(rows.filter((r) => r.input).length, 1);
+});
+
+test("import update: a startup already on the platform gets its empty fields filled, not rejected as a duplicate", async () => {
+  // Same data as on the platform, plus a website and founder email that are empty there.
+  const file = await filledTemplate([
+    { "Name (English)": "existing co", "Name (Arabic)": "الشركة الحالية", Industry: "Healthtech", Website: "www.existing.co", "Founder email": "Founder@Existing.co" },
+  ]);
+  const { rows } = await parseCompanyImport(file, null, withExisting());
+  const row = rows[0];
+  assert.deepEqual(row.problems, []);
+  assert.equal(row.kind, "update");
+  assert.equal(row.companyId, "co_1");
+  assert.deepEqual(row.changes.map((c) => c.field), ["nameEn"], "only the differently-typed name needs confirming");
+  assert.deepEqual(row.fills.map((f) => [f.field, f.to]), [
+    ["founderEmail", "founder@existing.co"],
+    ["website", "https://www.existing.co"],
+  ]);
+  assert.equal(row.values.website, "https://www.existing.co");
+});
+
+test("import update: a different value for a filled field is a change to confirm, shown as current -> new", async () => {
+  const file = await filledTemplate([{ "Name (English)": "Existing Co", "Current stage": "Series A", "HQ city": "Jeddah" }]);
+  const { rows } = await parseCompanyImport(file, null, withExisting());
+  assert.equal(rows[0].kind, "update");
+  assert.deepEqual(rows[0].fills, []);
+  assert.deepEqual(
+    rows[0].changes.map((c) => [c.label, c.from, c.to]),
+    [
+      ["Current stage", "Seed", "Series A"],
+      ["HQ city", "Riyadh", "Jeddah"],
+    ]
+  );
+});
+
+test("import update: empty cells never erase saved values; an identical row is reported as up to date", async () => {
+  // Only the name: every other cell is empty, yet nothing is cleared.
+  const file = await filledTemplate([{ "Name (English)": "Existing Co" }]);
+  const { rows } = await parseCompanyImport(file, null, withExisting());
+  assert.deepEqual(rows[0].problems, []);
+  assert.equal(rows[0].kind, "unchanged");
+  assert.deepEqual(rows[0].fills, []);
+  assert.deepEqual(rows[0].changes, []);
+});
+
+test("import update: staff can't update a startup in another department through a file", async () => {
+  const file = await filledTemplate([{ "Name (English)": "Existing Co", Website: "www.existing.co" }]);
+  const { rows } = await parseCompanyImport(file, ["VentureBuilder"], withExisting());
+  assert.match(rows[0].problems.join(" "), /another department/);
 });
 
 test("company import: staff limited to one department may leave Department empty; others may not use it", async () => {

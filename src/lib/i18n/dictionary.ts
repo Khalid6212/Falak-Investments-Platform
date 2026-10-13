@@ -290,6 +290,26 @@ export interface Dictionary {
       editAction: string;
       saveChangesLabel: string;
       emailAgainAction: string;
+      importCountsMessage: string;
+      importNewLabel: string;
+      importFillsLabel: string;
+      importChangesLabel: string;
+      importTickAllAction: string;
+      importUntickAllAction: string;
+      importNoChangeLabel: string;
+      importUpdatedLabel: string;
+      importSkippedLabel: string;
+      importEmptyValue: string;
+      importBackupNote: string;
+      backupsTitle: string;
+      backupsIntro: string;
+      noBackups: string;
+      backupSourceImport: string;
+      backupSourceEdit: string;
+      backupSourceRestore: string;
+      backupDiffersLabel: string;
+      restoreAction: string;
+      restoreConfirm: string;
       exposureTitle: string;
       exposureScopeLabel: string;
       exposureAllOption: string;
@@ -1050,6 +1070,26 @@ export const en = {
       editAction: "Edit",
       saveChangesLabel: "Save Changes",
       emailAgainAction: "Email again",
+      importCountsMessage: "Added {created}, updated {updated}.",
+      importNewLabel: "New startup",
+      importFillsLabel: "Will fill in",
+      importChangesLabel: "Changes to an existing value (tick to apply)",
+      importTickAllAction: "Tick all changes",
+      importUntickAllAction: "Untick all",
+      importNoChangeLabel: "Already up to date",
+      importUpdatedLabel: "Updated",
+      importSkippedLabel: "Not changed",
+      importEmptyValue: "empty",
+      importBackupNote: "Before a startup is updated, its previous details are backed up. An Admin can restore them for 90 days from the startup's edit page.",
+      backupsTitle: "Earlier versions (last 90 days)",
+      backupsIntro: "Each time this startup's details are changed, the previous details are kept here. Restoring one puts those details back; the current ones are backed up first, so a restore can be undone.",
+      noBackups: "No earlier versions in the last 90 days.",
+      backupSourceImport: "Before an Excel import",
+      backupSourceEdit: "Before an edit",
+      backupSourceRestore: "Before a restore",
+      backupDiffersLabel: "Differs from now in",
+      restoreAction: "Restore",
+      restoreConfirm: "Put this startup's details back to how they were before this change?",
       exposureTitle: "Investor's startups in a vehicle",
       exposureScopeLabel: "Startups this investor is exposed to",
       exposureAllOption: "All startups in this vehicle (including ones added later)",
@@ -1071,13 +1111,13 @@ export const en = {
       exposureNoStartups: "This vehicle doesn't hold any startups yet. Add them under Company Assignment to Vehicle.",
       importStartupsAction: "Import from Excel",
       importTitle: "Import startups from Excel",
-      importIntro: "Add many startups at once: download the template, fill in one startup per row, then upload it and click Check file. Every row is checked with the same rules as the form below, and nothing is added until you click Import.",
+      importIntro: "Add or update many startups at once: download the template, fill in one startup per row, then upload it and click Check file. New names are added; names already on the platform are updated (empty fields are filled in, and any change to an existing value needs your tick). Nothing is saved until you click Import.",
       importTemplateAction: "Download template",
       importFileLabel: "Excel file (.xlsx)",
       importCheckAction: "Check file",
-      importRunAction: "Import {count} startup(s)",
-      importReadyCount: "{ready} of {total} rows are ready to import. Rows with problems are skipped.",
-      importDoneMessage: "Imported {count} startup(s).",
+      importRunAction: "Import ({count})",
+      importReadyCount: "{ready} of {total} rows will be added or updated. Rows with problems or with nothing new are skipped.",
+      importDoneMessage: "Done.",
       importSkippedNote: "Rows with problems were skipped: fix them in the file and import it again (startups already added are skipped automatically).",
       importRowColumn: "Row",
       importStatusColumn: "Result",
@@ -1816,6 +1856,26 @@ export const ar = {
       editAction: "تعديل",
       saveChangesLabel: "حفظ التغييرات",
       emailAgainAction: "إرسال البريد مجدداً",
+      importCountsMessage: "أُضيفت {created} وحُدّثت {updated}.",
+      importNewLabel: "شركة ناشئة جديدة",
+      importFillsLabel: "سيُملأ",
+      importChangesLabel: "تغييرات على قيم موجودة (أشّر للتطبيق)",
+      importTickAllAction: "تأشير كل التغييرات",
+      importUntickAllAction: "إلغاء التأشير",
+      importNoChangeLabel: "محدّثة بالفعل",
+      importUpdatedLabel: "حُدّثت",
+      importSkippedLabel: "لم تتغير",
+      importEmptyValue: "فارغ",
+      importBackupNote: "قبل تحديث أي شركة ناشئة تُحفظ نسخة من بياناتها السابقة. يستطيع المسؤول استعادتها خلال 90 يوماً من صفحة تعديل الشركة.",
+      backupsTitle: "النسخ السابقة (آخر 90 يوماً)",
+      backupsIntro: "في كل مرة تتغير بيانات هذه الشركة الناشئة تُحفظ البيانات السابقة هنا. الاستعادة تعيد تلك البيانات، مع حفظ نسخة من الحالية أولاً، فيمكن التراجع عن الاستعادة.",
+      noBackups: "لا توجد نسخ سابقة خلال آخر 90 يوماً.",
+      backupSourceImport: "قبل استيراد من Excel",
+      backupSourceEdit: "قبل تعديل",
+      backupSourceRestore: "قبل استعادة",
+      backupDiffersLabel: "تختلف عن الحالية في",
+      restoreAction: "استعادة",
+      restoreConfirm: "إعادة بيانات هذه الشركة الناشئة إلى ما كانت عليه قبل هذا التغيير؟",
       exposureTitle: "الشركات الناشئة للمستثمر في أداة استثمارية",
       exposureScopeLabel: "الشركات الناشئة التي يتعرض لها هذا المستثمر",
       exposureAllOption: "جميع الشركات الناشئة في هذه الأداة (بما فيها التي تُضاف لاحقاً)",
@@ -1837,13 +1897,13 @@ export const ar = {
       exposureNoStartups: "لا تملك هذه الأداة أي شركات ناشئة بعد. أضفها من «إسناد شركة إلى أداة استثمارية».",
       importStartupsAction: "استيراد من Excel",
       importTitle: "استيراد الشركات الناشئة من Excel",
-      importIntro: "أضف عدة شركات ناشئة دفعة واحدة: نزّل القالب، واملأ شركة واحدة في كل صف، ثم ارفعه واضغط «فحص الملف». يُفحص كل صف بنفس قواعد النموذج أدناه، ولا يُضاف شيء حتى تضغط «استيراد».",
+      importIntro: "أضف أو حدّث عدة شركات ناشئة دفعة واحدة: نزّل القالب، واملأ شركة واحدة في كل صف، ثم ارفعه واضغط «فحص الملف». تُضاف الأسماء الجديدة، وتُحدَّث الأسماء الموجودة (تُملأ الحقول الفارغة، وأي تغيير لقيمة موجودة يحتاج تأشيرك). لا يُحفظ شيء حتى تضغط «استيراد».",
       importTemplateAction: "تنزيل القالب",
       importFileLabel: "ملف Excel (.xlsx)",
       importCheckAction: "فحص الملف",
-      importRunAction: "استيراد {count} شركة ناشئة",
-      importReadyCount: "{ready} من {total} صفاً جاهزة للاستيراد. تُتخطى الصفوف التي بها مشكلات.",
-      importDoneMessage: "تم استيراد {count} شركة ناشئة.",
+      importRunAction: "استيراد ({count})",
+      importReadyCount: "سيُضاف أو يُحدَّث {ready} من {total} صفاً. تُتخطى الصفوف التي بها مشكلات أو لا جديد فيها.",
+      importDoneMessage: "تم.",
       importSkippedNote: "تم تخطي الصفوف التي بها مشكلات: صحّحها في الملف واستورده مجدداً (تُتخطى الشركات المضافة تلقائياً).",
       importRowColumn: "الصف",
       importStatusColumn: "النتيجة",

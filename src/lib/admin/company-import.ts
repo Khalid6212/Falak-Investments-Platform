@@ -162,7 +162,8 @@ export async function buildCompanyImportTemplate(): Promise<Buffer> {
     "4. Revenue models: any of SaaS, Marketplace, E-Commerce, Transaction-Based, Subscription, Other, separated by commas.",
     `5. Up to ${MAX_IMPORT_ROWS} startups per file. Don't rename the "${SHEET_NAME}" sheet or its header row.`,
     "6. Upload the file, click Check file, review any problems, then click Import. Only rows without problems are imported.",
-    "Startups whose English name is already on the platform are skipped, so importing the same file twice adds nothing twice.",
+    "Updating: a row whose English name is already on the platform updates that startup. Empty cells change nothing; fields that are empty on the platform are filled in; a value that differs from what is saved is shown for you to tick before it is applied.",
+    "To update, only the English name and the columns you want to add are needed. Importing the same file twice adds nothing twice.",
   ].forEach((line, i) => {
     help.getCell(i + 1, 1).value = line;
     if (i === 0) help.getCell(i + 1, 1).font = { bold: true, size: 14 };
@@ -171,12 +172,40 @@ export async function buildCompanyImportTemplate(): Promise<Buffer> {
   return Buffer.from(await book.xlsx.writeBuffer());
 }
 
+/** A startup already on the platform, as the import compares against it. */
+export interface ExistingCompany extends CompanyInput {
+  id: string;
+}
+
+/** One field an import row would set on an existing startup. */
+export interface FieldChange {
+  field: keyof CompanyInput;
+  label: string;
+  /** Current value as shown to staff; "" when the field is empty. */
+  from: string;
+  to: string;
+}
+
 export interface ImportRow {
   rowNumber: number;
   nameEn: string;
   problems: string[];
-  /** Set when the row can be created. */
+  /**
+   * new: not on the platform yet. update: matches an existing startup (by
+   * English name) and would fill or change something. unchanged: matches
+   * and the file adds nothing.
+   */
+  kind: "new" | "update" | "unchanged";
+  /** new rows: the startup to create (null when the row has problems). */
   input: CompanyInput | null;
+  /** update/unchanged rows: the startup matched. */
+  companyId: string | null;
+  /** Empty on the platform, given in the file: applied automatically. */
+  fills: FieldChange[];
+  /** Different from what is saved: applied only when confirmed. */
+  changes: FieldChange[];
+  /** New values for every field in fills and changes. */
+  values: Partial<CompanyInput>;
 }
 
 export interface ParsedImport {
@@ -186,15 +215,65 @@ export interface ParsedImport {
 
 const FIELD_HEADER = Object.fromEntries(COLUMNS.map((c) => [c.field, c.header]));
 
+// Fields an update can touch, with the label staff see. Industry is stored
+// as two labels (sectorEn/sectorAr) that always move together.
+const UPDATE_FIELDS: { field: keyof CompanyInput; label: string; column: string }[] = [
+  { field: "nameEn", label: "Name (English)", column: "nameEn" },
+  { field: "nameAr", label: "Name (Arabic)", column: "nameAr" },
+  { field: "sectorEn", label: "Industry", column: "industry" },
+  { field: "customerModel", label: "Customer model", column: "customerModel" },
+  { field: "revenueModels", label: "Revenue models", column: "revenueModels" },
+  { field: "currency", label: "Currency", column: "currency" },
+  { field: "entryStage", label: "Entry stage", column: "entryStage" },
+  { field: "currentStage", label: "Current stage", column: "currentStage" },
+  { field: "department", label: "Department", column: "department" },
+  { field: "founderName", label: "Founder name", column: "founderName" },
+  { field: "founderEmail", label: "Founder email", column: "founderEmail" },
+  { field: "founderPhone", label: "Founder phone", column: "founderPhone" },
+  { field: "hqCity", label: "HQ city", column: "hqCity" },
+  { field: "hqCountry", label: "HQ country", column: "hqCountry" },
+  { field: "website", label: "Website", column: "website" },
+];
+
+const isEmpty = (v: unknown) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+const same = (a: unknown, b: unknown) =>
+  Array.isArray(a) && Array.isArray(b) ? [...a].sort().join("|") === [...b].sort().join("|") : (a ?? "") === (b ?? "");
+
+/** A stored value as staff read it (labels instead of internal codes). */
+function show(field: keyof CompanyInput, value: unknown): string {
+  if (isEmpty(value)) return "";
+  const label = (record: Record<string, string>, v: unknown) => record[String(v)] ?? String(v);
+  switch (field) {
+    case "customerModel":
+      return label(en.customerModels, value);
+    case "currency":
+      return String(value);
+    case "entryStage":
+    case "currentStage":
+      return label(en.stages, value);
+    case "department":
+      return label(en.departments, value);
+    case "revenueModels":
+      return (value as string[]).map((v) => label(en.revenueModels, v)).join(", ");
+    case "hqCountry":
+      return countryName(String(value), "en");
+    default:
+      return String(value);
+  }
+}
+
 /**
- * Reads and validates an uploaded import file. Rows are checked against
- * each other and against `existing` (live startups' English names and
- * every slug in use, lower-cased) so nothing is created twice.
+ * Reads and validates an uploaded import file against the startups already
+ * on the platform. A row whose English name matches one (ignoring case)
+ * updates it: empty cells never erase anything, values for fields that
+ * are empty on the platform are "fills", and values that differ from
+ * what is saved are "changes" for staff to confirm. Other rows are new
+ * startups. `slugs` is every link name in use (deleted startups included).
  */
 export async function parseCompanyImport(
   file: ArrayBuffer,
   scope: Department[] | null,
-  existing: { names: Set<string>; slugs: Set<string> }
+  existing: { companies: ExistingCompany[]; slugs: Set<string> }
 ): Promise<ParsedImport> {
   const book = new ExcelJS.Workbook();
   try {
@@ -212,9 +291,8 @@ export async function parseCompanyImport(
     const column = COLUMNS.find((c) => [c.header, ...(c.aliases ?? [])].some((h) => normalize(h) === text));
     if (column) columnOf[column.field] = col;
   });
-  const missing = COLUMNS.filter((c) => c.required && !columnOf[c.field]).map((c) => c.header);
-  if (missing.length) {
-    return { error: `The header row is missing: ${missing.join(", ")}. Start from the template.`, rows: [] };
+  if (!columnOf.nameEn) {
+    return { error: 'The header row is missing "Name (English)". Start from the template.', rows: [] };
   }
 
   const dataRows: { rowNumber: number; get: (field: string) => string }[] = [];
@@ -229,70 +307,109 @@ export async function parseCompanyImport(
     return { error: `The file has ${dataRows.length} startups; import up to ${MAX_IMPORT_ROWS} at a time.`, rows: [] };
   }
 
-  const namesSeen = new Set(existing.names);
+  const byName = new Map(existing.companies.map((c) => [c.nameEn.trim().toLowerCase(), c] as const));
+  const namesInFile = new Set<string>();
   const slugsTaken = new Set(existing.slugs);
   const singleDepartment = scope && scope.length === 1 ? scope[0] : null;
 
   const rows: ImportRow[] = dataRows.map(({ rowNumber, get }) => {
     const problems: string[] = [];
     const nameEn = get("nameEn");
+    const nameKey = nameEn.trim().toLowerCase();
+    const current = nameKey ? (byName.get(nameKey) ?? null) : null;
     const fd = new FormData();
-    const choice = (field: string, list: ListKey, fallback = "") => {
+    // The file's value when the cell is filled in; otherwise what the
+    // startup already has (an empty cell never erases anything).
+    const choice = (field: string, list: ListKey, fallback: string) => {
       const raw = get(field);
       const value = raw ? match(raw, OPTIONS[list]) : fallback;
       if (raw && !value) problems.push(`${FIELD_HEADER[field]}: "${raw}" isn't one of the listed options.`);
       fd.set(field, value ?? "");
     };
+    const text = (field: "nameAr" | "founderName" | "founderEmail" | "founderPhone" | "hqCity") => fd.set(field, get(field) || (current?.[field] ?? ""));
 
     fd.set("nameEn", nameEn);
-    fd.set("nameAr", get("nameAr"));
-    choice("industry", "industry");
-    fd.set("sectorEn", get("sectorEn"));
-    fd.set("sectorAr", get("sectorAr"));
-    choice("customerModel", "customerModel");
-    choice("currency", "currency");
-    choice("entryStage", "stage");
-    choice("currentStage", "stage");
-    // Staff limited to one department may leave it empty.
-    choice("department", "department", singleDepartment ?? "");
-    choice("hqCountry", "country");
-    for (const f of ["founderName", "founderEmail", "founderPhone", "hqCity"]) fd.set(f, get(f));
-    // "-" or "N/A" in the Website column means there is none.
-    const website = get("website");
-    fd.set("website", /^(-+|n\/?a|none|nil)$/i.test(website) ? "" : website);
-    for (const raw of get("revenueModels").split(/[,،;\n]/).map((s) => s.trim()).filter(Boolean)) {
-      const value = match(raw, OPTIONS.revenueModel);
-      if (value) fd.append("revenueModels", value);
-      else problems.push(`Revenue models: "${raw}" isn't one of the listed options.`);
+    text("nameAr");
+    if (get("industry") || !current) {
+      choice("industry", "industry", "");
+      fd.set("sectorEn", get("sectorEn"));
+      fd.set("sectorAr", get("sectorAr"));
+    } else {
+      // Keep the saved industry: a listed one by its label, else "Other".
+      const listed = INDUSTRIES.find((i) => i.key !== "Other" && i.en === current.sectorEn);
+      fd.set("industry", listed?.key ?? "Other");
+      fd.set("sectorEn", current.sectorEn);
+      fd.set("sectorAr", current.sectorAr);
+    }
+    choice("customerModel", "customerModel", current?.customerModel ?? "");
+    choice("currency", "currency", current?.currency ?? "");
+    choice("entryStage", "stage", current?.entryStage ?? "");
+    choice("currentStage", "stage", current?.currentStage ?? "");
+    // Staff limited to one department may leave it empty for a new startup.
+    choice("department", "department", current?.department ?? singleDepartment ?? "");
+    choice("hqCountry", "country", current?.hqCountry ?? "");
+    for (const f of ["founderName", "founderEmail", "founderPhone", "hqCity"] as const) text(f);
+    // "-" or "N/A" in the Website column means the file gives none.
+    const websiteCell = /^(-+|n\/?a|none|nil)$/i.test(get("website")) ? "" : get("website");
+    fd.set("website", websiteCell || (current?.website ?? ""));
+    const revenueCells = get("revenueModels").split(/[,،;\n]/).map((v) => v.trim()).filter(Boolean);
+    if (revenueCells.length > 0) {
+      for (const cell of revenueCells) {
+        const value = match(cell, OPTIONS.revenueModel);
+        if (value) fd.append("revenueModels", value);
+        else problems.push(`Revenue models: "${cell}" isn't one of the listed options.`);
+      }
+    } else {
+      for (const m of current?.revenueModels ?? []) fd.append("revenueModels", m);
     }
 
-    // The startup's link on the platform is built from its English name
+    // A new startup's link on the platform is built from its English name
     // (the name itself is stored exactly as typed), made unique (-2, -3,
-    // ...) when taken.
-    const base = linkNameFrom("", nameEn);
-    let slug = base;
-    for (let n = 2; slug && slugsTaken.has(slug); n++) slug = `${base}-${n}`;
-    if (!slug) problems.push("Name (English): needs at least one English letter or digit.");
+    // ...) when taken. An existing startup keeps its link.
+    let slug = current?.slug ?? "";
+    if (!current) {
+      const base = linkNameFrom("", nameEn);
+      slug = base;
+      for (let n = 2; slug && slugsTaken.has(slug); n++) slug = `${base}-${n}`;
+      if (!slug) problems.push("Name (English): needs at least one English letter or digit.");
+    }
     fd.set("slug", slug);
 
+    if (current && scope && !scope.includes(current.department)) {
+      problems.push("This startup belongs to another department.");
+    }
     const { errors, input } = validateCompany(fd, scope);
     for (const [field, message] of Object.entries(errors)) {
       // Choice values that didn't match are already reported above.
-      if (problems.some((p) => p.startsWith(`${FIELD_HEADER[field] ?? field}:`))) continue;
+      if (problems.some((x) => x.startsWith(`${FIELD_HEADER[field] ?? field}:`))) continue;
       problems.push(`${FIELD_HEADER[field] ?? (field === "industry" ? "Industry" : field)}: ${message}`);
     }
 
-    const nameKey = nameEn.trim().toLowerCase();
-    if (nameKey && namesSeen.has(nameKey)) {
-      problems.push(existing.names.has(nameKey) ? "Already on the platform." : "Appears more than once in this file.");
-    }
-    if (nameKey) namesSeen.add(nameKey);
+    if (nameKey && namesInFile.has(nameKey)) problems.push("Appears more than once in this file.");
+    if (nameKey) namesInFile.add(nameKey);
 
     const ok = problems.length === 0 && input !== null;
-    if (ok) slugsTaken.add(slug);
-    return { rowNumber, nameEn: nameEn || "—", problems, input: ok ? input : null };
+    const base = { rowNumber, nameEn: nameEn || "—", problems, companyId: current?.id ?? null };
+    if (!current) {
+      if (ok) slugsTaken.add(slug);
+      return { ...base, kind: "new" as const, input: ok ? input : null, fills: [], changes: [], values: {} };
+    }
+
+    // Compare what the row would save with what the startup has now.
+    const fills: FieldChange[] = [];
+    const changes: FieldChange[] = [];
+    const values: Partial<CompanyInput> = {};
+    if (ok && input) {
+      for (const { field, label } of UPDATE_FIELDS) {
+        if (same(current[field], input[field])) continue;
+        const entry = { field, label, from: show(field, current[field]), to: show(field, input[field]) };
+        (isEmpty(current[field]) ? fills : changes).push(entry);
+        Object.assign(values, { [field]: input[field] });
+        if (field === "sectorEn") values.sectorAr = input.sectorAr;
+      }
+    }
+    return { ...base, kind: fills.length + changes.length > 0 ? ("update" as const) : ("unchanged" as const), input: null, fills, changes, values };
   });
 
   return { error: null, rows };
 }
-

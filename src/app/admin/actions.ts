@@ -20,6 +20,7 @@ import { hashInviteToken } from "@/lib/auth/invite-token";
 import { normalizeEmail, MAX_RAW_EMAIL_LENGTH } from "@/lib/auth/utils";
 import { isAuthError, GENERIC_ACCESS_DENIED } from "@/lib/auth/action-error";
 import { writeAuditEvent } from "@/lib/audit/write-audit-event";
+import { BACKUP_DAYS, BACKUP_FIELDS, companySnapshot } from "@/lib/admin/company-backups";
 import { ALL_DEPARTMENTS_VALUE, BOTH_DEPARTMENTS_MANAGEMENT_ONLY, parseDepartmentChoice } from "@/lib/auth/department-choice";
 import { convertToDisplay, type DisplayCurrency } from "@/lib/currency/convert";
 import { requestSignInLink } from "@/lib/auth/request-sign-in";
@@ -196,14 +197,69 @@ export async function updateCompanyAction(_prevState: ActionState, formData: For
 
   try {
     await db.$transaction(async (tx) => {
+      // The previous details go into the audit event: a backup an Admin
+      // can restore (see company-backups.ts).
+      const before = await tx.company.findUnique({ where: { id: companyId } });
       await tx.company.update({ where: { id: companyId }, data: input });
-      await writeAuditEvent(tx, { actorId: user.id, action: "company.updated", targetType: "Company", targetId: companyId });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "company.updated",
+        targetType: "Company",
+        targetId: companyId,
+        meta: before ? { source: "edit", before: companySnapshot(before as unknown as Record<string, unknown>) } : { source: "edit" },
+      });
     });
   } catch {
     return { error: GENERIC_ERROR, values };
   }
 
   return { error: null, success: true, values };
+}
+
+/**
+ * Puts a startup's details back to an earlier version saved within the
+ * last BACKUP_DAYS days. Admin only. The details being replaced are backed
+ * up in turn, so a restore can itself be undone. The link name is never
+ * changed by a restore.
+ */
+export async function restoreCompanyBackupAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  try {
+    ({ user } = await requireFalakRole("FALAK_ADMIN"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+  const eventId = readString(formData, "backupId");
+  if (!eventId) return { error: GENERIC_ERROR };
+
+  const event = await db.auditEvent.findUnique({ where: { id: eventId }, select: { targetType: true, targetId: true, action: true, createdAt: true, meta: true } });
+  const saved = (event?.meta as { before?: Record<string, unknown> } | null)?.before;
+  const tooOld = event ? Date.now() - event.createdAt.getTime() > BACKUP_DAYS * 24 * 60 * 60 * 1000 : true;
+  if (!event || event.targetType !== "Company" || !["company.updated", "company.restored"].includes(event.action) || !saved || tooOld) {
+    return { error: "That earlier version is no longer available." };
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      const current = await tx.company.findUnique({ where: { id: event.targetId } });
+      if (!current || current.deletedAt) throw new Error("company gone");
+      // Only the backed-up fields the saved copy actually holds.
+      const data = Object.fromEntries(BACKUP_FIELDS.filter((f) => f in saved).map((f) => [f, saved[f]]));
+      await tx.company.update({ where: { id: current.id }, data });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "company.restored",
+        targetType: "Company",
+        targetId: current.id,
+        meta: { source: "restore", restoredFrom: eventId, before: companySnapshot(current as unknown as Record<string, unknown>) },
+      });
+    });
+  } catch (error) {
+    console.error("restoreCompanyBackupAction failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
 }
 
 // Plain (formData) => void signature -- used directly as a <form
