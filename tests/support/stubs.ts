@@ -1528,6 +1528,8 @@ export interface ReminderCycleFixture {
   companySlug: string;
   companyNameEn: string;
   memberEmails: string[];
+  /** Founder email on the company record -- may have no account. */
+  founderEmail?: string | null;
   submissionStatus: string | null;
 }
 
@@ -1546,8 +1548,15 @@ export interface ReminderCycleFixture {
 export function makeRemindersDbStub(cycles: ReminderCycleFixture[]) {
   const state = cycles.map((c) => ({ ...c }));
   const updates: { id: string; lastReminderSentAt: Date; lastReminderKind: string }[] = [];
+  const formLinks: { cycleId: string; email: string; tokenHash: string; expiresAt: Date }[] = [];
 
   return {
+    reportFormLink: {
+      create: async ({ data }: { data: { cycleId: string; email: string; tokenHash: string; expiresAt: Date } }) => {
+        formLinks.push(data);
+        return { id: `fl_${formLinks.length}`, ...data };
+      },
+    },
     reportingCycle: {
       findMany: async () =>
         state
@@ -1560,6 +1569,7 @@ export function makeRemindersDbStub(cycles: ReminderCycleFixture[]) {
             company: {
               slug: c.companySlug,
               nameEn: c.companyNameEn,
+              founderEmail: c.founderEmail ?? null,
               memberships: c.memberEmails.map((email) => ({ user: { email } })),
             },
           })),
@@ -1578,6 +1588,7 @@ export function makeRemindersDbStub(cycles: ReminderCycleFixture[]) {
       },
     },
     getUpdates: () => updates,
+    getFormLinks: () => formLinks,
   };
 }
 

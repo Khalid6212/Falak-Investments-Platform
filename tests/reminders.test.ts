@@ -186,3 +186,28 @@ test("one email per active member of the company", async () => {
   assert.equal(results[0].recipientCount, 2);
   assert.equal(upcoming.length, 2);
 });
+
+test("the founder email gets a reminder without an account, each recipient with their own link", async () => {
+  const upcoming = setSendDeadlineReminderEmailSpy();
+  const stub = makeRemindersDbStub([
+    {
+      id: "cy_1",
+      periodLabel: "Q2 2026",
+      currentDeadline: new Date("2026-06-18T00:00:00Z"),
+      companySlug: "acme",
+      companyNameEn: "Acme",
+      memberEmails: ["a@acme.com"],
+      founderEmail: "Founder@Acme.com",
+      submissionStatus: "draft",
+    },
+  ]);
+  setDbStub(stub);
+
+  await sendDueReminders(NOW);
+  assert.deepEqual(upcoming.map((e) => e.to).sort(), ["a@acme.com", "founder@acme.com"]);
+  const links = stub.getFormLinks();
+  assert.equal(links.length, 2);
+  assert.ok(upcoming.every((e) => e.formUrl.startsWith("https://falakinvestments.space/r/")));
+  assert.notEqual(upcoming[0].formUrl, upcoming[1].formUrl);
+  assert.ok(links.every((l) => l.cycleId === "cy_1" && l.expiresAt > new Date()));
+});

@@ -112,7 +112,8 @@ export async function load(url, context, nextLoad) {
         "export const sendOverdueReminderEmail = (...args) => globalThis.__TEST_SEND_OVERDUE_REMINDER_EMAIL_STUB__(...args);\n" +
         "export const sendReportPublishedEmail = (...args) => globalThis.__TEST_SEND_REPORT_PUBLISHED_EMAIL_STUB__(...args);\n" +
         "export const sendPasswordResetEmail = (...args) => globalThis.__TEST_SEND_PASSWORD_RESET_EMAIL_STUB__(...args);\n" +
-        "export const sendReportRequestEmail = (...args) => (globalThis.__TEST_SEND_REPORT_REQUEST_EMAIL_STUB__ ?? (async () => {}))(...args);",
+        "export const sendReportRequestEmail = (...args) => (globalThis.__TEST_SEND_REPORT_REQUEST_EMAIL_STUB__ ?? (async () => {}))(...args);\n" +
+        "export const sendChangesRequestedEmail = (...args) => (globalThis.__TEST_SEND_CHANGES_REQUESTED_EMAIL_STUB__ ?? (async () => {}))(...args);",
     };
   }
   if (url === "mock:storage-blob") {

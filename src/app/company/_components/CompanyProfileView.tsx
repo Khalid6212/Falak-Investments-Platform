@@ -229,11 +229,14 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                             </td>
                             <td className="whitespace-nowrap py-1.5 pe-3">{x.ownershipPct !== null ? <Num>{formatPercent(x.ownershipPct, lang, 2)}</Num> : "—"}</td>
                             <td className="whitespace-nowrap py-1.5">
-                              {x.participation === "NETWORK_MEMBER"
-                                ? t.admin.manage.participationNetwork
-                                : x.participation === "SYNDICATE_MEMBER"
-                                  ? t.admin.manage.participationSyndicate
-                                  : "—"}
+                              {x.participation
+                                ? {
+                                    NETWORK_MEMBER: t.admin.manage.participationNetwork,
+                                    SYNDICATE_MEMBER: t.admin.manage.participationSyndicate,
+                                    FALAK_TEAM: t.admin.manage.participationFalakTeam,
+                                    FALAK: t.admin.manage.participationFalak,
+                                  }[x.participation]
+                                : "—"}
                             </td>
                           </tr>
                         ))}

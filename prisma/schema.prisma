@@ -503,6 +503,8 @@ enum ExposureScope {
 enum InvestorParticipation {
   NETWORK_MEMBER
   SYNDICATE_MEMBER
+  FALAK_TEAM
+  FALAK
 }
 
 // An investor's exposure to one startup THROUGH one vehicle position:
@@ -778,6 +780,7 @@ model ReportingCycle {
   obligationCoverage ReportingCycleObligation[]
   deadlineExtensions ReportingCycleDeadlineExtension[]
   requestEmails      ReportRequestEmail[]
+  formLinks          ReportFormLink[]
   submission         CompanySubmission?
 
   @@unique([companyId, templateId, periodStart, periodEnd])
@@ -804,6 +807,28 @@ model ReportRequestEmail {
 
   @@index([cycleId])
   @@map("report_request_emails")
+}
+
+// A private link to one reporting cycle's form, emailed to the startup
+// (with a request, a reminder or a change request) so it can fill in and
+// submit the report without a platform account. Only the token's hash is
+// stored. The link works while the report is open for the startup to
+// edit (draft / changes requested) and until expiresAt.
+model ReportFormLink {
+  id         String         @id @default(cuid())
+  cycle      ReportingCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  cycleId    String
+  tokenHash  String         @unique
+  // Who it was emailed to.
+  email      String
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([cycleId])
+  @@map("report_form_links")
 }
 
 model ReportingCycleDeadlineExtension {

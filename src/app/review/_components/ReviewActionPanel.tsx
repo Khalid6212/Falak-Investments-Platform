@@ -212,6 +212,11 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
                       {changes.state.error}
                     </p>
                   ) : null}
+                  {changes.state.notice ? (
+                    <p role="status" className="text-xs font-semibold text-danger">
+                      {changes.state.notice}
+                    </p>
+                  ) : null}
                 </form>
 
                 <form {...approve.formProps} className="flex flex-col gap-1">

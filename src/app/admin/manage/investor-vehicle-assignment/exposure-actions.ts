@@ -14,7 +14,7 @@ export interface ExposureFormState {
 
 const AMOUNT = /^\d+(\.\d{1,4})?$/;
 const CURRENCIES: Currency[] = ["SAR", "USD"];
-const PARTICIPATIONS: InvestorParticipation[] = ["NETWORK_MEMBER", "SYNDICATE_MEMBER"];
+const PARTICIPATIONS: InvestorParticipation[] = ["NETWORK_MEMBER", "SYNDICATE_MEMBER", "FALAK_TEAM", "FALAK"];
 const SCOPES: ExposureScope[] = ["ALL_STARTUPS", "SELECTED"];
 const GENERIC_ERROR = "Something went wrong. Check your input and try again.";
 

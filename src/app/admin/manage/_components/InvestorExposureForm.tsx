@@ -96,6 +96,8 @@ export function InvestorExposureForm({ data }: { data: PositionExposureData }) {
                         <option value="">—</option>
                         <option value="NETWORK_MEMBER">{m.participationNetwork}</option>
                         <option value="SYNDICATE_MEMBER">{m.participationSyndicate}</option>
+                        <option value="FALAK_TEAM">{m.participationFalakTeam}</option>
+                        <option value="FALAK">{m.participationFalak}</option>
                       </Select>
                       {errorFor(`participation_${s.companyId}`)}
                     </td>

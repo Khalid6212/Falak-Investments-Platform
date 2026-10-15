@@ -137,12 +137,16 @@ export async function sendDeadlineReminderEmail(
     {
       to,
       subject: `Reminder: ${periodLabel} report due ${deadline} -- ${companyName}`,
-      html: `<p>Your ${periodLabel} report for ${companyName} is due on ${deadline}.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
-      text: `Your ${periodLabel} report for ${companyName} is due on ${deadline}.\n\n${formUrl}`,
+      html: `<p>Your ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)} is due on ${escapeHtml(deadline)}.</p><p>${LINK_ACTION}</p><p><a href="${escapeHtml(formUrl)}">${escapeHtml(formUrl)}</a></p>`,
+      text: `Your ${periodLabel} report for ${companyName} is due on ${deadline}.\n\n${LINK_ACTION}\n\n${formUrl}`,
     },
     "deadline-reminder"
   );
 }
+
+// Every link in a startup's report emails opens the form directly.
+const LINK_ACTION =
+  "Open the link below to fill in and submit the report. No account is needed. Anyone with this link can submit the report, so please keep it within your team.";
 
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -154,12 +158,10 @@ const escapeHtml = (s: string) =>
  */
 export async function sendReportRequestEmail(
   to: string,
-  details: { companyName: string; periodLabel: string; deadline: string; url: string; isInvite: boolean }
+  details: { companyName: string; periodLabel: string; deadline: string; url: string }
 ): Promise<void> {
-  const { companyName, periodLabel, deadline, url, isInvite } = details;
-  const action = isInvite
-    ? "Accept the invitation below to set up your access, then fill in the report."
-    : "Open the reporting form below to fill it in.";
+  const { companyName, periodLabel, deadline, url } = details;
+  const action = LINK_ACTION;
   await deliver(
     {
       to,
@@ -168,6 +170,29 @@ export async function sendReportRequestEmail(
       text: `Falak Ventures has requested the ${periodLabel} report for ${companyName}, due on ${deadline}.\n\n${action}\n\n${url}`,
     },
     "report-request"
+  );
+}
+
+/**
+ * Sent when Falak reviews a submitted report and sends it back for changes:
+ * the reviewer's comment plus a fresh link to the form, which is open for
+ * editing again.
+ */
+export async function sendChangesRequestedEmail(
+  to: string,
+  details: { companyName: string; periodLabel: string; deadline: string; comment: string; url: string }
+): Promise<void> {
+  const { companyName, periodLabel, deadline, comment, url } = details;
+  const intro = `Falak Ventures has reviewed the ${periodLabel} report for ${companyName} and asked for some changes.`;
+  const outro = "Open the link below to update and resubmit the report. No account is needed. Anyone with this link can submit the report, so please keep it within your team.";
+  await deliver(
+    {
+      to,
+      subject: `Changes requested: ${periodLabel} report -- ${companyName}`,
+      html: `<p>${escapeHtml(intro)}</p><p><strong>Reviewer's comment:</strong></p><blockquote style="margin:0 0 1em;padding-left:12px;border-left:3px solid #ccc;white-space:pre-wrap">${escapeHtml(comment)}</blockquote><p>${outro} The report is due on ${escapeHtml(deadline)}.</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
+      text: `${intro}\n\nReviewer's comment:\n${comment}\n\n${outro} The report is due on ${deadline}.\n\n${url}`,
+    },
+    "changes-requested"
   );
 }
 
@@ -187,8 +212,8 @@ export async function sendOverdueReminderEmail(
     {
       to,
       subject: `Overdue: ${periodLabel} report -- ${companyName}`,
-      html: `<p>The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.</p><p><a href="${formUrl}">${formUrl}</a></p>`,
-      text: `The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.\n\n${formUrl}`,
+      html: `<p>The ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)} was due on ${escapeHtml(deadline)} and has not yet been submitted.</p><p>${LINK_ACTION}</p><p><a href="${escapeHtml(formUrl)}">${escapeHtml(formUrl)}</a></p>`,
+      text: `The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.\n\n${LINK_ACTION}\n\n${formUrl}`,
     },
     "overdue-reminder"
   );

@@ -327,6 +327,8 @@ export interface Dictionary {
       participationColumn: string;
       participationNetwork: string;
       participationSyndicate: string;
+      participationFalakTeam: string;
+      participationFalak: string;
       exposureSavedMessage: string;
       exposureNoStartups: string;
       importStartupsAction: string;
@@ -377,6 +379,7 @@ export interface Dictionary {
       emailKindInvite: string;
       emailKindReminderUpcoming: string;
       emailKindReminderOverdue: string;
+      emailKindChangesRequested: string;
       editTemplateTitle: string;
       templatesListTitle: string;
       templateActiveLabel: string;
@@ -601,6 +604,20 @@ export interface Dictionary {
     noMembershipsMessage: string;
     willOpenEditableMessage: string;
     willOpenLockedMessage: string;
+  };
+  formLink: {
+    title: string;
+    dueLabel: string;
+    intro: string;
+    requiredNote: string;
+    saveAction: string;
+    submitAction: string;
+    savedMessage: string;
+    submittedTitle: string;
+    lockedTitle: string;
+    lockedBody: string;
+    invalidTitle: string;
+    invalidBody: string;
   };
   notFound: {
     title: string;
@@ -1107,6 +1124,8 @@ export const en = {
       participationColumn: "Investor type",
       participationNetwork: "Network member",
       participationSyndicate: "Syndicate member",
+      participationFalakTeam: "Falak Team",
+      participationFalak: "Falak",
       exposureSavedMessage: "Saved.",
       exposureNoStartups: "This vehicle doesn't hold any startups yet. Add them under Company Assignment to Vehicle.",
       importStartupsAction: "Import from Excel",
@@ -1157,6 +1176,7 @@ export const en = {
       emailKindInvite: "Founder invitation",
       emailKindReminderUpcoming: "Deadline reminder",
       emailKindReminderOverdue: "Overdue reminder",
+      emailKindChangesRequested: "Changes requested",
       editTemplateTitle: "Edit Reporting Template",
       templatesListTitle: "Templates",
       templateActiveLabel: "Active (offered for new reporting cycles)",
@@ -1383,6 +1403,20 @@ export const en = {
     noMembershipsMessage: "You aren't a member of any company yet. Company members are added by invitation.",
     willOpenEditableMessage: "This report is open for editing.",
     willOpenLockedMessage: "This report is locked while it's in review or approved.",
+  },
+  formLink: {
+    title: "{period} report -- {company}",
+    dueLabel: "Due {date}",
+    intro: "Fill in the figures below. Save keeps your progress so you can come back to this link later; Submit sends the report to Falak.",
+    requiredNote: "Fields marked * are required to submit. Tick N/A for anything that doesn't apply.",
+    saveAction: "Save progress",
+    submitAction: "Submit report",
+    savedMessage: "Saved. You can come back to this link to finish.",
+    submittedTitle: "Thank you -- your report has been submitted.",
+    lockedTitle: "This report has already been submitted.",
+    lockedBody: "Falak will review it. If changes are needed, you'll receive an email with a new link.",
+    invalidTitle: "This link is no longer valid.",
+    invalidBody: "It may have expired or been replaced by a newer email. Please use the latest email from Falak, or contact info@falak.sa.",
   },
   notFound: {
     title: "Page Not Found",
@@ -1893,6 +1927,8 @@ export const ar = {
       participationColumn: "نوع المستثمر",
       participationNetwork: "عضو في الشبكة",
       participationSyndicate: "عضو في التحالف الاستثماري",
+      participationFalakTeam: "فريق فلك",
+      participationFalak: "فلك",
       exposureSavedMessage: "تم الحفظ.",
       exposureNoStartups: "لا تملك هذه الأداة أي شركات ناشئة بعد. أضفها من «إسناد شركة إلى أداة استثمارية».",
       importStartupsAction: "استيراد من Excel",
@@ -1943,6 +1979,7 @@ export const ar = {
       emailKindInvite: "دعوة المؤسس",
       emailKindReminderUpcoming: "تذكير بالموعد",
       emailKindReminderOverdue: "تذكير بالتأخر",
+      emailKindChangesRequested: "طلب تعديلات",
       editTemplateTitle: "تعديل قالب التقارير",
       templatesListTitle: "القوالب",
       templateActiveLabel: "نشط (متاح لدورات التقارير الجديدة)",
@@ -2169,6 +2206,20 @@ export const ar = {
     noMembershipsMessage: "لست عضواً في أي شركة بعد. تتم إضافة أعضاء الشركات عبر دعوة.",
     willOpenEditableMessage: "هذا التقرير متاح للتعديل.",
     willOpenLockedMessage: "هذا التقرير مقفل أثناء المراجعة أو بعد الاعتماد.",
+  },
+  formLink: {
+    title: "تقرير {period} -- {company}",
+    dueLabel: "الموعد النهائي {date}",
+    intro: "أدخل الأرقام أدناه. زر الحفظ يحفظ ما أدخلته لتكمل لاحقًا من نفس الرابط، وزر الإرسال يرسل التقرير إلى فلك.",
+    requiredNote: "الحقول المميزة بـ * مطلوبة للإرسال. اختر \"لا ينطبق\" لما لا ينطبق.",
+    saveAction: "حفظ التقدم",
+    submitAction: "إرسال التقرير",
+    savedMessage: "تم الحفظ. يمكنك العودة إلى هذا الرابط لإكمال التقرير.",
+    submittedTitle: "شكرًا لك -- تم إرسال تقريرك.",
+    lockedTitle: "تم إرسال هذا التقرير مسبقًا.",
+    lockedBody: "سيقوم فريق فلك بمراجعته. إذا كانت هناك تعديلات مطلوبة، ستصلك رسالة برابط جديد.",
+    invalidTitle: "هذا الرابط لم يعد صالحًا.",
+    invalidBody: "ربما انتهت صلاحيته أو استُبدل برسالة أحدث. يرجى استخدام أحدث رسالة من فلك، أو التواصل عبر info@falak.sa.",
   },
   notFound: {
     title: "الصفحة غير موجودة",

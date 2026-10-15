@@ -5,13 +5,8 @@ import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope
 import { ForbiddenError } from "@/lib/auth/authorization-errors";
 import { writeAuditEvent } from "@/lib/audit/write-audit-event";
 import { SUBMITTABLE_FROM_STATUSES } from "@/lib/reporting/submission-status";
-import {
-  FIX_FIELDS_ERROR,
-  fetchSubmissionMetricFields,
-  invalidMetricFields,
-  writeMetricValues,
-  type MetricValueInput,
-} from "@/lib/reporting/metrics";
+import { fetchSubmissionMetricFields, type MetricValueInput } from "@/lib/reporting/metrics";
+import { saveEntry, type EntryResult } from "@/lib/reporting/entry-core";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 import type { Currency } from "@/generated/prisma/client";
 
@@ -106,20 +101,7 @@ export async function getStaffEntryCycle(cycleId: string): Promise<StaffEntryCyc
   };
 }
 
-export interface StaffEntryResult {
-  error: string | null;
-  fieldErrors?: Record<string, string>;
-  success: boolean;
-  submitted?: boolean;
-}
-
-class MissingRequired extends Error {
-  ids: string[];
-  constructor(ids: string[]) {
-    super("missing required");
-    this.ids = ids;
-  }
-}
+export type StaffEntryResult = EntryResult;
 
 /**
  * Saves staff-entered figures for a cycle; with `submit`, also submits the
@@ -135,77 +117,15 @@ export async function staffSaveCycleValues(cycleId: string, values: MetricValueI
   if (!STAFF_EDITABLE_STATUSES.includes(submission.status)) return { error: LOCKED_ERROR, success: false };
   const submitNow = submit && SUBMITTABLE_FROM_STATUSES.includes(submission.status);
 
-  // Only this cycle's own template's fields can be written.
-  const definitions = await db.metricDefinition.findMany({
-    where: { templateId: cycle.templateId, isActive: true },
-    select: { id: true, dataType: true, required: true },
-  });
-  const definitionsById = new Map(definitions.map((d) => [d.id, d.dataType] as const));
-
-  const fieldErrors = invalidMetricFields(values, definitionsById);
-  if (Object.keys(fieldErrors).length > 0) {
-    return { error: FIX_FIELDS_ERROR, fieldErrors, success: false };
-  }
-
-  try {
-    await db.$transaction(async (tx) => {
-      await writeMetricValues(tx, submission.id, values, definitionsById);
-      await writeAuditEvent(tx, {
-        actorId: user.id,
-        action: "submission.values_entered_by_staff",
-        targetType: "CompanySubmission",
-        targetId: submission.id,
-      });
-      if (!submitNow) return;
-
-      const required = definitions.filter((d) => d.required).map((d) => d.id);
-      const answered = await tx.submissionMetricValue.findMany({
-        where: { submissionId: submission.id, metricDefinitionId: { in: required } },
-        select: { metricDefinitionId: true, isNa: true, numericValue: true, textValue: true },
-      });
-      const done = new Set(
-        answered
-          .filter((v) => v.isNa || v.numericValue !== null || (v.textValue !== null && v.textValue.trim().length > 0))
-          .map((v) => v.metricDefinitionId)
-      );
-      const missing = required.filter((id) => !done.has(id));
-      if (missing.length > 0) throw new MissingRequired(missing);
-
-      // Pinned to the status just read, so a concurrent change fails safely.
-      const claim = await tx.companySubmission.updateMany({
-        where: { id: submission.id, status: submission.status },
-        data: { status: "submitted", submittedById: user.id },
-      });
-      if (claim.count !== 1) throw new Error("status changed");
-      const priorEventCount = await tx.submissionWorkflowEvent.count({ where: { submissionId: submission.id } });
-      await tx.submissionWorkflowEvent.create({
-        data: {
-          submissionId: submission.id,
-          versionNo: priorEventCount + 1,
-          actorId: user.id,
-          fromStatus: submission.status,
-          toStatus: "submitted",
-          comment: "Figures entered and submitted by Falak staff on the startup's behalf.",
-        },
-      });
-      await writeAuditEvent(tx, {
-        actorId: user.id,
-        action: "submission.submitted_by_staff",
-        targetType: "CompanySubmission",
-        targetId: submission.id,
-      });
-    });
-  } catch (error) {
-    if (error instanceof MissingRequired) {
-      return {
-        error: `${error.ids.length} required field(s) are empty. Fill them in (or tick N/A) to submit. Nothing was saved.`,
-        fieldErrors: Object.fromEntries(error.ids.map((id) => [`value_${id}`, "Required."])),
-        success: false,
-      };
+  return saveEntry(
+    { submissionId: submission.id, status: submission.status, templateId: cycle.templateId },
+    values,
+    submitNow,
+    {
+      actorId: user.id,
+      savedAction: "submission.values_entered_by_staff",
+      submittedAction: "submission.submitted_by_staff",
+      submitComment: "Figures entered and submitted by Falak staff on the startup's behalf.",
     }
-    console.error("Staff entry failed:", error);
-    return { error: GENERIC_ERROR, success: false };
-  }
-
-  return { error: null, success: true, submitted: submitNow };
+  );
 }

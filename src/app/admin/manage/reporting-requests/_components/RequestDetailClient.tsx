@@ -27,6 +27,7 @@ function kindLabel(kind: string, m: Dictionary["admin"]["manage"]): string {
   if (kind === "invite") return m.emailKindInvite;
   if (kind === "reminder_upcoming") return m.emailKindReminderUpcoming;
   if (kind === "reminder_overdue") return m.emailKindReminderOverdue;
+  if (kind === "changes_requested") return m.emailKindChangesRequested;
   return m.emailKindRequest;
 }
 

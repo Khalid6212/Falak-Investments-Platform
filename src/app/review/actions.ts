@@ -17,6 +17,7 @@ import {
   type SubmissionAttachmentDTO,
 } from "@/lib/reporting/attachments";
 import { InvalidTransitionError } from "@/lib/reporting/submission-errors";
+import { notifyChangesRequested } from "@/lib/reporting/report-request-notify";
 import { isAuthError, GENERIC_ACCESS_DENIED } from "@/lib/auth/action-error";
 import type { NarrativeKind } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
@@ -25,6 +26,7 @@ export interface ReviewActionState {
   error: string | null;
   fieldErrors?: Record<string, string>;
   success?: boolean;
+  notice?: string;
 }
 
 export interface SaveMetricsActionState {
@@ -88,8 +90,10 @@ export async function requestChangesAction(_prevState: ReviewActionState, formDa
     return { error: message, fieldErrors: { comment: message } };
   }
 
+  let actorId: string;
   try {
     await requestChanges(submissionId, comment);
+    ({ user: { id: actorId } } = await requireFalakRole("FALAK_OPERATIONS"));
   } catch (error) {
     if (isAuthError(error)) {
       return { error: GENERIC_ACCESS_DENIED };
@@ -100,7 +104,10 @@ export async function requestChangesAction(_prevState: ReviewActionState, formDa
     throw error;
   }
 
-  return { error: null };
+  // The startup gets the comment and a fresh link to the form, now open
+  // for editing again. The change request stands even if the email fails.
+  const emailed = await notifyChangesRequested(submissionId, comment, actorId);
+  return { error: null, success: true, notice: emailed ? undefined : "Changes requested, but no email could be sent to the startup (no contact on file or delivery failed)." };
 }
 
 export async function approveSubmissionAction(_prevState: ReviewActionState, formData: FormData): Promise<ReviewActionState> {

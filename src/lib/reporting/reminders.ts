@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { sendDeadlineReminderEmail, sendOverdueReminderEmail } from "@/lib/email/send-email";
 import { errorMessage, logRequestEmails, type RequestEmailLogEntry } from "@/lib/reporting/request-email-log";
+import { RECIPIENT_SELECT, createFormLink, formLinkUrl, startupRecipients } from "@/lib/reporting/form-link";
 
 const UPCOMING_WINDOW_DAYS = 7;
 // The cron sweep runs roughly once a day -- this cooldown just guards
@@ -49,14 +50,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       currentDeadline: true,
       lastReminderSentAt: true,
       company: {
-        select: {
-          slug: true,
-          nameEn: true,
-          memberships: {
-            where: { revokedAt: null },
-            select: { user: { select: { email: true } } },
-          },
-        },
+        select: { nameEn: true, ...RECIPIENT_SELECT },
       },
     },
   });
@@ -76,11 +70,12 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
       if (hoursSinceLastReminder < RESEND_COOLDOWN_HOURS) continue;
     }
 
-    const recipients = cycle.company.memberships.map((m) => m.user.email);
+    // The startup's users and its founder email; nobody needs an account,
+    // each email carries its own link to the form.
+    const recipients = startupRecipients(cycle.company);
     if (recipients.length === 0) continue;
 
     const kind: "upcoming" | "overdue" = isOverdue ? "overdue" : "upcoming";
-    const formUrl = `${baseUrl}/submit/${cycle.company.slug}`;
     const deadlineLabel = toDateOnly(cycle.currentDeadline);
 
     const logKind = kind === "overdue" ? "reminder_overdue" : "reminder_upcoming";
@@ -88,6 +83,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
     try {
       for (const email of recipients) {
         try {
+          const formUrl = formLinkUrl(baseUrl, await createFormLink(db, cycle.id, email));
           if (kind === "overdue") {
             await sendOverdueReminderEmail(email, cycle.company.nameEn, cycle.periodLabel, deadlineLabel, formUrl);
           } else {

@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 
-export type RequestEmailKind = "request" | "invite" | "reminder_upcoming" | "reminder_overdue";
+export type RequestEmailKind = "request" | "invite" | "reminder_upcoming" | "reminder_overdue" | "changes_requested";
 
 export interface RequestEmailLogEntry {
   cycleId: string;
