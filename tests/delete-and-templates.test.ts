@@ -415,3 +415,69 @@ test("investments: Correct rejects a bad amount without changing anything", asyn
   assert.ok(result.fieldErrors?.investedAmount);
   assert.ok(!admin.calls.some((c) => c.startsWith("investmentAgreement.")), "nothing touched");
 });
+
+function answeredMetricsStub(updates: { where: { id: string }; data: Record<string, unknown> }[], templateUpdates: Record<string, unknown>[] = []) {
+  return makeAdminActionDbStub({
+    falakRoles: OPS,
+    models: {
+      metricDefinition: {
+        findMany: async (args?: { where?: { deletedAt?: unknown } }) => args?.where?.deletedAt ? [] : [
+          { id: "m1", key: "revenue_b2b", dataType: "Currency", sortOrder: 1, labelEn: "Revenue", _count: { currentValues: 3, snapshotValues: 0 } },
+          { id: "m2", key: "total_revenue", dataType: "Number", sortOrder: 2, labelEn: "Total", _count: { currentValues: 2, snapshotValues: 1 } },
+        ],
+        update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+          updates.push(args);
+          return {};
+        },
+        createMany: async ({ data }: { data: unknown[] }) => ({ count: data.length }),
+      },
+      reportingTemplate: {
+        update: async (args: { data: Record<string, unknown> }) => {
+          templateUpdates.push(args.data);
+          return {};
+        },
+      },
+    },
+  });
+}
+
+const ANSWERED_BASE = {
+  templateId: "t1",
+  nameEn: "Quarterly",
+  nameAr: "ربع سنوي",
+  labelEn_m1: "Revenue",
+  labelAr_m1: "الإيرادات",
+  sortOrder_m1: "1",
+  labelEn_m2: "Total revenue",
+  labelAr_m2: "إجمالي الإيرادات",
+  sortOrder_m2: "2",
+};
+
+test("templates: Edit on an answered metric changes its key and switches it to another number type", async () => {
+  setCurrentUser(REAL_USER);
+  const updates: { where: { id: string }; data: Record<string, unknown> }[] = [];
+  const templateUpdates: Record<string, unknown>[] = [];
+  setDbStub(answeredMetricsStub(updates, templateUpdates));
+  const result = await actions.updateReportingTemplateAction(
+    { error: null },
+    form({ ...ANSWERED_BASE, unlock_m2: "on", key_m2: "Revenue Total", dataType_m2: "Currency", collectFinancialStatements: "on" })
+  );
+  assert.equal(result.error, null);
+  const m2 = updates.filter((u) => u.where.id === "m2").at(-1)!.data;
+  assert.equal(m2.key, "revenue_total");
+  assert.equal(m2.dataType, "Currency");
+  const m1 = updates.filter((u) => u.where.id === "m1").at(-1)!.data;
+  assert.equal("key" in m1, false, "not opened with Edit: stays locked");
+  assert.equal(templateUpdates[0].collectFinancialStatements, true);
+});
+
+test("templates: Edit can't rename a key the charts read, or turn answered numbers into text", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(answeredMetricsStub([]));
+  const result = await actions.updateReportingTemplateAction(
+    { error: null },
+    form({ ...ANSWERED_BASE, unlock_m1: "on", key_m1: "sales", dataType_m1: "Currency", unlock_m2: "on", key_m2: "total_revenue", dataType_m2: "Text" })
+  );
+  assert.match(result.fieldErrors?.key_m1 ?? "", /feeds the charts/);
+  assert.match(result.fieldErrors?.dataType_m2 ?? "", /Currency, Percent and Number/);
+});

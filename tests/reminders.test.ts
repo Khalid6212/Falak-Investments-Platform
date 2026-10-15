@@ -211,3 +211,30 @@ test("the founder email gets a reminder without an account, each recipient with 
   assert.notEqual(upcoming[0].formUrl, upcoming[1].formUrl);
   assert.ok(links.every((l) => l.cycleId === "cy_1" && l.expiresAt > new Date()));
 });
+
+test("the startup's investment professionals are copied once, never their other department's", async () => {
+  const upcoming = setSendDeadlineReminderEmailSpy();
+  setDbStub(
+    makeRemindersDbStub(
+      [
+        {
+          id: "cy_1",
+          periodLabel: "Q2 2026",
+          currentDeadline: new Date("2026-06-18T00:00:00Z"),
+          companySlug: "acme",
+          companyNameEn: "Acme",
+          memberEmails: ["a@acme.com", "b@acme.com"],
+          submissionStatus: "draft",
+        },
+      ],
+      [
+        { email: "IP@falak.sa", department: "InvestmentDepartment" },
+        { email: "vb@falak.sa", department: "VentureBuilder" },
+      ]
+    )
+  );
+  await sendDueReminders(NOW);
+  assert.equal(upcoming.length, 2);
+  assert.deepEqual(upcoming[0].cc, ["ip@falak.sa"]);
+  assert.deepEqual(upcoming[1].cc, []);
+});

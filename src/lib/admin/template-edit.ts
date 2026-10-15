@@ -20,6 +20,7 @@ export interface TemplateForEdit {
   nameEn: string;
   nameAr: string;
   isActive: boolean;
+  collectFinancialStatements: boolean;
   cycleCount: number;
   metrics: TemplateMetricForEdit[];
 }
@@ -44,6 +45,7 @@ export async function getReportingTemplateForEdit(id: string): Promise<TemplateF
     nameEn: template.nameEn,
     nameAr: template.nameAr,
     isActive: template.isActive,
+    collectFinancialStatements: template.collectFinancialStatements,
     cycleCount: template._count.cycles,
     metrics: template.metrics.map((m) => ({
       id: m.id,

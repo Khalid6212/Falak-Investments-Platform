@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { sendDeadlineReminderEmail, sendOverdueReminderEmail } from "@/lib/email/send-email";
 import { errorMessage, logRequestEmails, type RequestEmailLogEntry } from "@/lib/reporting/request-email-log";
-import { RECIPIENT_SELECT, createFormLink, formLinkUrl, startupRecipients } from "@/lib/reporting/form-link";
+import { RECIPIENT_SELECT, createFormLink, formLinkUrl, investmentProfessionalCc, startupRecipients } from "@/lib/reporting/form-link";
 
 const UPCOMING_WINDOW_DAYS = 7;
 // The cron sweep runs roughly once a day -- this cooldown just guards
@@ -81,14 +81,17 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
     const logKind = kind === "overdue" ? "reminder_overdue" : "reminder_upcoming";
     const log: RequestEmailLogEntry[] = [];
     try {
+      // The startup's investment professionals are copied once, on the first email.
+      let cc = await investmentProfessionalCc(cycle.company.department, recipients);
       for (const email of recipients) {
         try {
           const formUrl = formLinkUrl(baseUrl, await createFormLink(db, cycle.id, email));
           if (kind === "overdue") {
-            await sendOverdueReminderEmail(email, cycle.company.nameEn, cycle.periodLabel, deadlineLabel, formUrl);
+            await sendOverdueReminderEmail(email, cycle.company.nameEn, cycle.periodLabel, deadlineLabel, formUrl, cc);
           } else {
-            await sendDeadlineReminderEmail(email, cycle.company.nameEn, cycle.periodLabel, deadlineLabel, formUrl);
+            await sendDeadlineReminderEmail(email, cycle.company.nameEn, cycle.periodLabel, deadlineLabel, formUrl, cc);
           }
+          cc = [];
           log.push({ cycleId: cycle.id, recipientEmail: email, kind: logKind, status: "sent" });
         } catch (error) {
           log.push({ cycleId: cycle.id, recipientEmail: email, kind: logKind, status: "failed", failureReason: errorMessage(error) });

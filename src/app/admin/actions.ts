@@ -25,6 +25,7 @@ import { ALL_DEPARTMENTS_VALUE, BOTH_DEPARTMENTS_MANAGEMENT_ONLY, parseDepartmen
 import { convertToDisplay, type DisplayCurrency } from "@/lib/currency/convert";
 import { requestSignInLink } from "@/lib/auth/request-sign-in";
 import { hashPassword, MIN_PASSWORD_LENGTH, MAX_RAW_PASSWORD_LENGTH } from "@/lib/auth/password";
+import { NUMERIC_DATA_TYPES, SYSTEM_METRIC_KEYS } from "@/lib/reporting/system-metric-keys";
 import type {
   Currency,
   MetricDataType,
@@ -870,7 +871,9 @@ export async function createReportingTemplateAction(_prevState: ActionState, for
 
   try {
     await db.$transaction(async (tx) => {
-      const template = await tx.reportingTemplate.create({ data: { nameEn, nameAr } });
+      const template = await tx.reportingTemplate.create({
+        data: { nameEn, nameAr, collectFinancialStatements: formData.get("collectFinancialStatements") === "on" },
+      });
       await tx.metricDefinition.createMany({
         data: metrics.map((m) => ({ ...m, templateId: template.id, required: true })),
       });
@@ -1911,10 +1914,13 @@ export async function deleteInvestorAction(_prevState: ActionState, formData: Fo
 const METRIC_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 
 /**
- * Safe edits to a template that may already be in use: name, on/off,
- * and per metric its labels, order, required and on/off. A metric's key
- * and data type change only while no startup has entered a value for it,
- * so past reports keep reading correctly. New metrics can be added.
+ * Edits to a template that may already be in use: name, on/off, whether
+ * it asks for financial statements, and per metric its labels, order,
+ * required and on/off. New metrics can be added. A metric's key and data
+ * type are free while no startup has answered it; once answered they
+ * change only through its Edit button (unlock_<id>), and only where past
+ * answers keep reading correctly: a key the charts read stays, and the
+ * type moves only among the number types.
  * Templates are shared by all departments; any Falak staff may edit.
  */
 export async function updateReportingTemplateAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1959,7 +1965,8 @@ export async function updateReportingTemplateAction(_prevState: ActionState, for
   const keys = new Set<string>(deletedKeys);
   const now = new Date();
   for (const m of existing) {
-    const locked = m._count.currentValues + m._count.snapshotValues > 0;
+    const hasValues = m._count.currentValues + m._count.snapshotValues > 0;
+    const locked = hasValues && formData.get(`unlock_${m.id}`) !== "on";
     // Delete: no row is removed (values already reported keep their
     // history); the metric leaves the template and every form. One that was
     // never answered also frees its key for reuse.
@@ -1970,7 +1977,7 @@ export async function updateReportingTemplateAction(_prevState: ActionState, for
           deletedAt: now,
           isActive: false,
           required: false,
-          ...(locked ? {} : { key: `${m.key}__deleted_${now.getTime().toString(36)}`.slice(0, 120) }),
+          ...(hasValues ? {} : { key: `${m.key}__deleted_${now.getTime().toString(36)}`.slice(0, 120) }),
         },
       });
       continue;
@@ -1985,6 +1992,16 @@ export async function updateReportingTemplateAction(_prevState: ActionState, for
     flag(`sortOrder_${m.id}`, Number.isInteger(sortOrder), "Enter a whole number.");
     flag(`key_${m.id}`, key && METRIC_KEY_PATTERN.test(key), "Enter a key, e.g. revenue_b2b.");
     flag(`dataType_${m.id}`, dataType && METRIC_DATA_TYPES.includes(dataType as MetricDataType), FIELD.choose);
+    if (hasValues && key !== m.key) {
+      flag(`key_${m.id}`, !SYSTEM_METRIC_KEYS.has(m.key), `"${m.key}" feeds the charts and reports, so it keeps its key. Change its labels instead.`);
+    }
+    if (hasValues && dataType !== m.dataType) {
+      flag(
+        `dataType_${m.id}`,
+        NUMERIC_DATA_TYPES.has(m.dataType) && NUMERIC_DATA_TYPES.has(dataType ?? ""),
+        "Startups have answered this metric, so it can only switch between Currency, Percent and Number."
+      );
+    }
     flag(`key_${m.id}`, !keys.has(key), deletedKeys.has(key) ? `"${key}" belongs to a deleted metric; choose another key.` : `"${key}" is used by another metric.`);
     keys.add(key);
     updates.push({
@@ -2027,7 +2044,12 @@ export async function updateReportingTemplateAction(_prevState: ActionState, for
     await db.$transaction(async (tx) => {
       await tx.reportingTemplate.update({
         where: { id: templateId },
-        data: { nameEn, nameAr, isActive: formData.get("templateActive") === "on" },
+        data: {
+          nameEn,
+          nameAr,
+          isActive: formData.get("templateActive") === "on",
+          collectFinancialStatements: formData.get("collectFinancialStatements") === "on",
+        },
       });
       // Free up keys first, so swapping two unlocked keys can't collide on the unique index.
       for (const u of updates) {

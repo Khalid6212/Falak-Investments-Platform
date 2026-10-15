@@ -92,6 +92,7 @@ export interface SentReminderEmail {
   periodLabel: string;
   deadline: string;
   formUrl: string;
+  cc: string[];
 }
 
 /** Shared by both reminder kinds -- same signature, different real function. */
@@ -102,9 +103,10 @@ function installReminderSpy(stubKey: string): SentReminderEmail[] {
     companyName: string,
     periodLabel: string,
     deadline: string,
-    formUrl: string
+    formUrl: string,
+    cc: string[] = []
   ) => {
-    calls.push({ to, companyName, periodLabel, deadline, formUrl });
+    calls.push({ to, companyName, periodLabel, deadline, formUrl, cc });
   };
   return calls;
 }
@@ -1533,6 +1535,9 @@ export interface ReminderCycleFixture {
   submissionStatus: string | null;
 }
 
+/** Active investment professionals by department, for the Cc lookup. */
+export type InvestmentProfessionalFixture = { email: string; department: string }[];
+
 /**
  * Backs sendDueReminders (src/lib/reporting/reminders.ts). Only
  * `reportingCycle.findMany`/`.update` are needed -- the function never
@@ -1545,12 +1550,16 @@ export interface ReminderCycleFixture {
  * every fixture and lets sendDueReminders' own date/cooldown math decide
  * what to act on, which is the real behavior under test.
  */
-export function makeRemindersDbStub(cycles: ReminderCycleFixture[]) {
+export function makeRemindersDbStub(cycles: ReminderCycleFixture[], investmentProfessionals: InvestmentProfessionalFixture = []) {
   const state = cycles.map((c) => ({ ...c }));
   const updates: { id: string; lastReminderSentAt: Date; lastReminderKind: string }[] = [];
   const formLinks: { cycleId: string; email: string; tokenHash: string; expiresAt: Date }[] = [];
 
   return {
+    user: {
+      findMany: async ({ where }: { where: { department: string } }) =>
+        investmentProfessionals.filter((p) => p.department === where.department).map((p) => ({ email: p.email })),
+    },
     reportFormLink: {
       create: async ({ data }: { data: { cycleId: string; email: string; tokenHash: string; expiresAt: Date } }) => {
         formLinks.push(data);
@@ -1570,6 +1579,7 @@ export function makeRemindersDbStub(cycles: ReminderCycleFixture[]) {
               slug: c.companySlug,
               nameEn: c.companyNameEn,
               founderEmail: c.founderEmail ?? null,
+              department: "InvestmentDepartment",
               memberships: c.memberEmails.map((email) => ({ user: { email } })),
             },
           })),

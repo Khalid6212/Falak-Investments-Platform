@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { setDbStub, makeAdminActionDbStub } from "./support/stubs.ts";
 
 // Imports the REAL production module via tests/support/mock-loader.mjs.
-const { saveViaFormLink, getFormLinkView, startupRecipients } = await import("../src/lib/reporting/form-link.ts");
+const { saveViaFormLink, getFormLinkView, startupRecipients, uploadStatementViaFormLink } = await import("../src/lib/reporting/form-link.ts");
 const { hashInviteToken } = await import("../src/lib/auth/invite-token.ts");
 
 const TOKEN = "a".repeat(64);
@@ -18,6 +18,7 @@ interface LinkOptions {
   expiresAt?: Date;
   revokedAt?: Date | null;
   archived?: boolean;
+  statements?: boolean;
   answered?: { metricDefinitionId: string; isNa: boolean; numericValue: string | null; textValue: string | null }[];
 }
 
@@ -25,6 +26,7 @@ function makeStub(options: LinkOptions = {}) {
   const upserts: Record<string, unknown>[] = [];
   const statusUpdates: Record<string, unknown>[] = [];
   const linkUpdates: Record<string, unknown>[] = [];
+  const attachments: Record<string, unknown>[] = [];
   const stub = makeAdminActionDbStub({
     falakRoles: [],
     models: {
@@ -41,6 +43,8 @@ function makeStub(options: LinkOptions = {}) {
                   id: "cy_1",
                   templateId: "tpl_1",
                   periodLabel: "Q3 2026",
+                  periodEnd: new Date("2026-09-30T00:00:00Z"),
+                  template: { collectFinancialStatements: options.statements ?? false },
                   currentDeadline: new Date("2026-10-15T00:00:00Z"),
                   company: {
                     nameEn: "Acme",
@@ -56,6 +60,13 @@ function makeStub(options: LinkOptions = {}) {
           linkUpdates.push(args);
           return args;
         },
+      },
+      attachment: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          attachments.push(data);
+          return { id: `att_${attachments.length}` };
+        },
+        findMany: async () => attachments.map((a) => ({ fileName: a.fileName, kind: a.kind })),
       },
       metricDefinition: { findMany: async () => DEFINITIONS },
       submissionMetricValue: {
@@ -77,7 +88,7 @@ function makeStub(options: LinkOptions = {}) {
       },
     },
   });
-  return { stub, upserts, statusUpdates, linkUpdates };
+  return { stub, upserts, statusUpdates, linkUpdates, attachments };
 }
 
 test("form link: saves a draft's figures without submitting, audited as via the link", async () => {
@@ -150,4 +161,47 @@ test("recipients: active members plus the founder email, normalized and de-dupli
     memberships: [{ user: { email: "founder@acme.com" } }, { user: { email: "cfo@acme.com" } }],
   });
   assert.deepEqual(emails.sort(), ["cfo@acme.com", "founder@acme.com"]);
+});
+
+const uploads: { pathname: string }[] = [];
+(globalThis as Record<string, unknown>).__TEST_UPLOAD_ATTACHMENT_STUB__ = async (pathname: string, body: Blob, contentType: string) => {
+  uploads.push({ pathname });
+  return { pathname: pathname + "-x1", size: body.size, contentType };
+};
+const pdf = (bytes = 2048, name = "FS 2025.pdf", type = "application/pdf") => new File([new Uint8Array(bytes)], name, { type });
+
+test("statements: uploaded through the link onto the submission, never as a report file", async () => {
+  uploads.length = 0;
+  const { stub, attachments } = makeStub({ statements: true });
+  setDbStub(stub);
+  const result = await uploadStatementViaFormLink(TOKEN, pdf(), true);
+  assert.deepEqual(result, { error: null, success: true });
+  assert.equal(attachments.length, 1);
+  assert.equal(attachments[0].ownerType, "SUBMISSION");
+  assert.equal(attachments[0].kind, "AuditedFinancials");
+  assert.equal(attachments[0].submissionId, "sub_1");
+  assert.equal(attachments[0].reportVersionId, undefined);
+  assert.equal(attachments[0].uploadedById, null);
+  assert.ok(uploads[0].pathname.startsWith("submissions/sub_1/statements/"));
+  assert.ok(stub.getAuditEvents().some((e) => e.action === "submission.statements_uploaded_via_link"));
+  const view = await getFormLinkView(TOKEN);
+  assert.ok(view.ok && view.collectStatements && view.statementsYear === 2025);
+  assert.deepEqual(view.ok && view.statements, [{ fileName: "FS 2025.pdf", audited: true }]);
+});
+
+test("statements: refused when the template doesn't ask, the report is locked, or the file is too big or the wrong type", async () => {
+  const cases: [string, LinkOptions, File][] = [
+    ["not asked", { statements: false }, pdf()],
+    ["locked", { statements: true, status: "submitted" }, pdf()],
+    ["too big", { statements: true }, pdf(5 * 1024 * 1024)],
+    ["wrong type", { statements: true }, pdf(100, "run.exe", "application/x-msdownload")],
+    ["empty", { statements: true }, pdf(0)],
+  ];
+  for (const [name, options, file] of cases) {
+    const { stub, attachments } = makeStub(options);
+    setDbStub(stub);
+    const result = await uploadStatementViaFormLink(TOKEN, file, false);
+    assert.equal(result.success, false, name);
+    assert.equal(attachments.length, 0, name);
+  }
 });

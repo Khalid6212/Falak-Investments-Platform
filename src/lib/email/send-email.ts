@@ -18,6 +18,8 @@ function fromAddress(): { from: string; replyTo: string | null } {
 
 interface Message {
   to: string;
+  /** Copied in (e.g. the startup's investment professionals). */
+  cc?: string[];
   subject: string;
   html: string;
   text: string;
@@ -34,6 +36,7 @@ async function deliver(message: Message, what: string): Promise<void> {
     const endpoint = process.env.MAILGUN_ENDPOINT?.trim() || "api.mailgun.net";
     const body = new URLSearchParams({ from, to: message.to, subject: message.subject, html: message.html, text: message.text });
     if (replyTo) body.set("h:Reply-To", replyTo);
+    if (message.cc?.length) body.set("cc", message.cc.join(","));
     const response = await fetch(`https://${endpoint}/v3/${encodeURIComponent(mailgunDomain)}/messages`, {
       method: "POST",
       headers: { Authorization: `Basic ${Buffer.from(`api:${mailgunKey}`).toString("base64")}` },
@@ -51,7 +54,7 @@ async function deliver(message: Message, what: string): Promise<void> {
     throw new Error("No email provider is configured (set MAILGUN_SECRET and MAILGUN_DOMAIN, or RESEND_API_KEY).");
   }
   resendClient ??= new Resend(apiKey);
-  const { error } = await resendClient.emails.send({ from, to: message.to, subject: message.subject, html: message.html, text: message.text, ...(replyTo ? { replyTo } : {}) });
+  const { error } = await resendClient.emails.send({ from, to: message.to, subject: message.subject, html: message.html, text: message.text, ...(message.cc?.length ? { cc: message.cc } : {}), ...(replyTo ? { replyTo } : {}) });
   if (error) {
     throw new Error(`Failed to send ${what} email: ${error.message}`);
   }
@@ -131,11 +134,13 @@ export async function sendDeadlineReminderEmail(
   companyName: string,
   periodLabel: string,
   deadline: string,
-  formUrl: string
+  formUrl: string,
+  cc: string[] = []
 ): Promise<void> {
   await deliver(
     {
       to,
+      cc,
       subject: `Reminder: ${periodLabel} report due ${deadline} -- ${companyName}`,
       html: `<p>Your ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)} is due on ${escapeHtml(deadline)}.</p><p>${LINK_ACTION}</p><p><a href="${escapeHtml(formUrl)}">${escapeHtml(formUrl)}</a></p>`,
       text: `Your ${periodLabel} report for ${companyName} is due on ${deadline}.\n\n${LINK_ACTION}\n\n${formUrl}`,
@@ -158,13 +163,14 @@ const escapeHtml = (s: string) =>
  */
 export async function sendReportRequestEmail(
   to: string,
-  details: { companyName: string; periodLabel: string; deadline: string; url: string }
+  details: { companyName: string; periodLabel: string; deadline: string; url: string; cc?: string[] }
 ): Promise<void> {
   const { companyName, periodLabel, deadline, url } = details;
   const action = LINK_ACTION;
   await deliver(
     {
       to,
+      cc: details.cc,
       subject: `Falak report request: ${periodLabel} -- ${companyName}`,
       html: `<p>Falak Ventures has requested the ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)}, due on ${escapeHtml(deadline)}.</p><p>${action}</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
       text: `Falak Ventures has requested the ${periodLabel} report for ${companyName}, due on ${deadline}.\n\n${action}\n\n${url}`,
@@ -180,7 +186,7 @@ export async function sendReportRequestEmail(
  */
 export async function sendChangesRequestedEmail(
   to: string,
-  details: { companyName: string; periodLabel: string; deadline: string; comment: string; url: string }
+  details: { companyName: string; periodLabel: string; deadline: string; comment: string; url: string; cc?: string[] }
 ): Promise<void> {
   const { companyName, periodLabel, deadline, comment, url } = details;
   const intro = `Falak Ventures has reviewed the ${periodLabel} report for ${companyName} and asked for some changes.`;
@@ -188,6 +194,7 @@ export async function sendChangesRequestedEmail(
   await deliver(
     {
       to,
+      cc: details.cc,
       subject: `Changes requested: ${periodLabel} report -- ${companyName}`,
       html: `<p>${escapeHtml(intro)}</p><p><strong>Reviewer's comment:</strong></p><blockquote style="margin:0 0 1em;padding-left:12px;border-left:3px solid #ccc;white-space:pre-wrap">${escapeHtml(comment)}</blockquote><p>${outro} The report is due on ${escapeHtml(deadline)}.</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
       text: `${intro}\n\nReviewer's comment:\n${comment}\n\n${outro} The report is due on ${deadline}.\n\n${url}`,
@@ -206,11 +213,13 @@ export async function sendOverdueReminderEmail(
   companyName: string,
   periodLabel: string,
   deadline: string,
-  formUrl: string
+  formUrl: string,
+  cc: string[] = []
 ): Promise<void> {
   await deliver(
     {
       to,
+      cc,
       subject: `Overdue: ${periodLabel} report -- ${companyName}`,
       html: `<p>The ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)} was due on ${escapeHtml(deadline)} and has not yet been submitted.</p><p>${LINK_ACTION}</p><p><a href="${escapeHtml(formUrl)}">${escapeHtml(formUrl)}</a></p>`,
       text: `The ${periodLabel} report for ${companyName} was due on ${deadline} and has not yet been submitted.\n\n${LINK_ACTION}\n\n${formUrl}`,

@@ -660,6 +660,9 @@ model ReportingTemplate {
   nameAr    String
   version   Int      @default(1)
   isActive  Boolean  @default(true)
+  // The form also asks for last year's financial statements (upload).
+  // Those files stay with Falak; investors never see them.
+  collectFinancialStatements Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

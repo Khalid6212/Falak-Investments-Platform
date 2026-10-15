@@ -7,11 +7,66 @@ import { useForm } from "@/components/forms/useForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatDate } from "@/lib/format";
 import { METRIC_SECTIONS, MetricField, groupMetrics } from "@/app/submit/_components/MetricsEntryForm";
-import { formLinkAction } from "./actions";
-import type { FormLinkView } from "@/lib/reporting/form-link";
+import { FileText } from "lucide-react";
+import { formLinkAction, uploadStatementAction } from "./actions";
+import type { FormLinkView, StatementUploadResult } from "@/lib/reporting/form-link";
 import type { EntryResult } from "@/lib/reporting/entry-core";
 
 const initialState: EntryResult = { error: null, success: false };
+const initialUploadState: StatementUploadResult = { error: null, success: false };
+
+/** Last year's financial statements, when the template asks for them. */
+function StatementsCard({ token, year, files }: { token: string; year: number; files: { fileName: string; audited: boolean }[] }) {
+  const { t } = useLanguage();
+  const f = t.formLink;
+  const { state, isPending, formProps } = useForm(uploadStatementAction.bind(null, token), initialUploadState);
+  return (
+    <Card padding="sm" className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">{f.statementsTitle.replace("{year}", String(year))}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{f.statementsHint}</p>
+      </div>
+      {files.length > 0 ? (
+        <ul className="space-y-1">
+          {files.map((file, i) => (
+            <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+              <FileText aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+              <span className="break-all">{file.fileName}</span>
+              {file.audited ? <span className="text-xs text-muted-foreground">({f.auditedTag})</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <form {...formProps} className="flex flex-wrap items-center gap-3">
+        <input
+          type="file"
+          name="file"
+          required
+          accept=".pdf,.xlsx,.xls,.docx,.png,.jpg,.jpeg"
+          aria-label={f.statementsTitle.replace("{year}", String(year))}
+          className="max-w-full text-sm text-foreground file:me-3 file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-sm"
+        />
+        <label className="inline-flex items-center gap-2 text-sm text-foreground">
+          <input type="checkbox" name="audited" />
+          {f.auditedLabel}
+        </label>
+        <Button type="submit" variant="outline" size="sm" disabled={isPending}>
+          {isPending ? f.uploadingAction : f.uploadAction}
+        </Button>
+      </form>
+      {state.error ? (
+        <p role="alert" className="text-sm font-semibold text-danger">
+          {state.error}
+        </p>
+      ) : null}
+      {state.success ? (
+        <p role="status" className="text-sm font-medium text-nebula-aqua">
+          {f.uploadedMessage}
+        </p>
+      ) : null}
+    </Card>
+  );
+}
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { lang, setLang } = useLanguage();
@@ -77,6 +132,7 @@ export function FormLinkClient({ token, view }: { token: string; view: FormLinkV
     <Shell>
       {header}
       <p className="text-sm text-muted-foreground">{f.intro}</p>
+      {view.collectStatements ? <StatementsCard token={token} year={view.statementsYear} files={view.statements} /> : null}
       <form {...formProps} className="space-y-5">
         <fieldset disabled={isPending} className="space-y-5">
           {METRIC_SECTIONS.map((sectionKey) =>

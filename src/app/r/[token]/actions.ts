@@ -1,6 +1,6 @@
 "use server";
 
-import { saveViaFormLink } from "@/lib/reporting/form-link";
+import { saveViaFormLink, uploadStatementViaFormLink, type StatementUploadResult } from "@/lib/reporting/form-link";
 import type { EntryResult } from "@/lib/reporting/entry-core";
 import type { MetricValueInput } from "@/lib/reporting/metrics";
 
@@ -23,4 +23,11 @@ export async function formLinkAction(token: string, _prev: EntryResult, formData
     });
   }
   return saveViaFormLink(token, values, formData.get("intent") === "submit");
+}
+
+/** Uploads one financial statements file through the emailed link. */
+export async function uploadStatementAction(token: string, _prev: StatementUploadResult, formData: FormData): Promise<StatementUploadResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "Choose a file to upload.", success: false };
+  return uploadStatementViaFormLink(token, file, formData.get("audited") === "on");
 }

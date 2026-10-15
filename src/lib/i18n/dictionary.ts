@@ -383,6 +383,10 @@ export interface Dictionary {
       editTemplateTitle: string;
       templatesListTitle: string;
       templateActiveLabel: string;
+      collectStatementsLabel: string;
+      collectStatementsHint: string;
+      editMetricAction: string;
+      metricUnlockedNote: string;
       templateInactiveLabel: string;
       templateInUseNote: string;
       metricOrderLabel: string;
@@ -618,6 +622,13 @@ export interface Dictionary {
     lockedBody: string;
     invalidTitle: string;
     invalidBody: string;
+    statementsTitle: string;
+    statementsHint: string;
+    auditedLabel: string;
+    auditedTag: string;
+    uploadAction: string;
+    uploadingAction: string;
+    uploadedMessage: string;
   };
   notFound: {
     title: string;
@@ -1180,12 +1191,16 @@ export const en = {
       editTemplateTitle: "Edit Reporting Template",
       templatesListTitle: "Templates",
       templateActiveLabel: "Active (offered for new reporting cycles)",
+      collectStatementsLabel: "Ask for last year's financial statements",
+      collectStatementsHint: "Startups get an upload box on the report form. The files stay with Falak; investors never see them.",
+      editMetricAction: "Edit",
+      metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
       templateInUseNote: "Used by {count} reporting cycle(s). Changes apply to those cycles too.",
       metricOrderLabel: "Order",
       metricRequiredLabel: "Required",
       metricActiveLabel: "Shown on the form",
-      metricLockedNote: "Key and data type are locked because startups have entered values for this metric.",
+      metricLockedNote: "Startups have answered this metric. Use Edit to change its key or data type.",
       deleteSectionTitle: "Delete",
       deleteCompanyWarning: "Removes this startup from every list, dashboard and portal, ends its users' access and cancels its pending invites. Its name can be reused for a new startup. Its history is kept in the database for the audit trail, but it cannot be restored from the platform.",
       deleteVehicleWarning: "Removes this vehicle from every list, dashboard and portal (the startups it holds stay). Its name can be reused. Its history is kept in the database for the audit trail, but it cannot be restored from the platform.",
@@ -1417,6 +1432,13 @@ export const en = {
     lockedBody: "Falak will review it. If changes are needed, you'll receive an email with a new link.",
     invalidTitle: "This link is no longer valid.",
     invalidBody: "It may have expired or been replaced by a newer email. Please use the latest email from Falak, or contact info@falak.sa.",
+    statementsTitle: "Financial statements for {year}",
+    statementsHint: "Please attach your financial statements, audited if possible. PDF, Excel, Word or image, up to 4 MB each. Only Falak sees these files.",
+    auditedLabel: "Audited",
+    auditedTag: "audited",
+    uploadAction: "Upload",
+    uploadingAction: "Uploading…",
+    uploadedMessage: "Uploaded. You can add more files if needed.",
   },
   notFound: {
     title: "Page Not Found",
@@ -1983,12 +2005,16 @@ export const ar = {
       editTemplateTitle: "تعديل قالب التقارير",
       templatesListTitle: "القوالب",
       templateActiveLabel: "نشط (متاح لدورات التقارير الجديدة)",
+      collectStatementsLabel: "طلب القوائم المالية للسنة الماضية",
+      collectStatementsHint: "يظهر للشركات خانة لرفع الملفات في نموذج التقرير. تبقى الملفات لدى فلك ولا يراها المستثمرون.",
+      editMetricAction: "تعديل",
+      metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",
       templateInUseNote: "مستخدم في {count} من دورات التقارير. تنطبق التغييرات عليها أيضاً.",
       metricOrderLabel: "الترتيب",
       metricRequiredLabel: "إلزامي",
       metricActiveLabel: "يظهر في النموذج",
-      metricLockedNote: "المفتاح ونوع البيانات مقفلان لأن الشركات الناشئة أدخلت قيماً لهذا المؤشر.",
+      metricLockedNote: "أدخلت الشركات قيماً لهذا المؤشر. استخدم \"تعديل\" لتغيير المفتاح أو نوع البيانات.",
       deleteSectionTitle: "حذف",
       deleteCompanyWarning: "يزيل هذه الشركة الناشئة من جميع القوائم ولوحات المعلومات والبوابات، وينهي وصول مستخدميها ويلغي دعواتها المعلقة. يمكن استخدام اسمها لشركة جديدة. يُحتفظ بسجلها في قاعدة البيانات لأغراض التدقيق، ولا يمكن استعادتها من المنصة.",
       deleteVehicleWarning: "يزيل هذه الأداة الاستثمارية من جميع القوائم ولوحات المعلومات والبوابات (تبقى الشركات التي تملكها). يمكن استخدام اسمها مجدداً. يُحتفظ بسجلها في قاعدة البيانات لأغراض التدقيق، ولا يمكن استعادتها من المنصة.",
@@ -2220,6 +2246,13 @@ export const ar = {
     lockedBody: "سيقوم فريق فلك بمراجعته. إذا كانت هناك تعديلات مطلوبة، ستصلك رسالة برابط جديد.",
     invalidTitle: "هذا الرابط لم يعد صالحًا.",
     invalidBody: "ربما انتهت صلاحيته أو استُبدل برسالة أحدث. يرجى استخدام أحدث رسالة من فلك، أو التواصل عبر info@falak.sa.",
+    statementsTitle: "القوائم المالية لعام {year}",
+    statementsHint: "يرجى إرفاق القوائم المالية، ويفضل أن تكون مدققة. ملف PDF أو Excel أو Word أو صورة، بحد أقصى 4 ميجابايت للملف. لا يطلع على هذه الملفات إلا فريق فلك.",
+    auditedLabel: "مدققة",
+    auditedTag: "مدققة",
+    uploadAction: "رفع",
+    uploadingAction: "جارٍ الرفع…",
+    uploadedMessage: "تم الرفع. يمكنك إضافة ملفات أخرى عند الحاجة.",
   },
   notFound: {
     title: "الصفحة غير موجودة",

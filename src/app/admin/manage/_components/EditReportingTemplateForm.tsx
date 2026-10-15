@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import { useForm } from "@/components/forms/useForm";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { Input } from "@/components/ui/Input";
@@ -33,6 +33,9 @@ export function EditReportingTemplateForm({ template }: { template: TemplateForE
       else next.add(id);
       return next;
     });
+  // Answered metrics opened with Edit: their key and data type become editable.
+  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  const unlock = (id: string) => setUnlocked((prev) => new Set(prev).add(id));
 
   return (
     <form {...formProps} className="flex flex-col gap-4">
@@ -58,6 +61,13 @@ export function EditReportingTemplateForm({ template }: { template: TemplateForE
         <input type="checkbox" name="templateActive" defaultChecked={template.isActive} />
         {t.admin.manage.templateActiveLabel}
       </label>
+      <label className="inline-flex items-start gap-2 text-sm text-foreground">
+        <input type="checkbox" name="collectFinancialStatements" className="mt-1" defaultChecked={template.collectFinancialStatements} />
+        <span>
+          {t.admin.manage.collectStatementsLabel}
+          <span className="block text-xs text-muted-foreground">{t.admin.manage.collectStatementsHint}</span>
+        </span>
+      </label>
 
       <div className="flex flex-col gap-3">
         {template.metrics.map((m) =>
@@ -73,9 +83,10 @@ export function EditReportingTemplateForm({ template }: { template: TemplateForE
             </div>
           ) : (
           <div key={m.id} className="chamfer-br-sm flex flex-col gap-2 p-3 shadow-[var(--inner-line)]">
+            {unlocked.has(m.id) ? <input type="hidden" name={`unlock_${m.id}`} value="on" /> : null}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_10rem_5rem]">
               <div className="flex flex-col gap-1">
-                <Input aria-label={t.admin.manage.metricKeyLabel} name={`key_${m.id}`} defaultValue={m.key} disabled={m.hasValues} />
+                <Input aria-label={t.admin.manage.metricKeyLabel} name={`key_${m.id}`} defaultValue={m.key} disabled={m.hasValues && !unlocked.has(m.id)} />
                 {errorFor(`key_${m.id}`)}
               </div>
               <div className="flex flex-col gap-1">
@@ -91,7 +102,7 @@ export function EditReportingTemplateForm({ template }: { template: TemplateForE
                   aria-label={t.admin.manage.metricDataTypeLabel}
                   name={`dataType_${m.id}`}
                   defaultValue={m.dataType}
-                  disabled={m.hasValues}
+                  disabled={m.hasValues && !unlocked.has(m.id)}
                 >
                   {METRIC_DATA_TYPES.map((dt) => (
                     <option key={dt} value={dt}>{dt}</option>
@@ -119,8 +130,22 @@ export function EditReportingTemplateForm({ template }: { template: TemplateForE
                 <input type="checkbox" name={`isActive_${m.id}`} defaultChecked={m.isActive} />
                 {t.admin.manage.metricActiveLabel}
               </label>
-              {m.hasValues ? <span>{t.admin.manage.metricLockedNote}</span> : null}
-              <Button type="button" variant="ghost" size="xs" className="ms-auto text-danger" onClick={() => toggleDelete(m.id)}>
+              {m.hasValues ? (
+                <span>{unlocked.has(m.id) ? t.admin.manage.metricUnlockedNote : t.admin.manage.metricLockedNote}</span>
+              ) : null}
+              {m.hasValues && !unlocked.has(m.id) ? (
+                <Button type="button" variant="ghost" size="xs" className="ms-auto" onClick={() => unlock(m.id)}>
+                  <Pencil aria-hidden="true" className="me-1 h-3.5 w-3.5" />
+                  {t.admin.manage.editMetricAction}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className={`${m.hasValues && !unlocked.has(m.id) ? "" : "ms-auto "}text-danger`}
+                onClick={() => toggleDelete(m.id)}
+              >
                 <Trash2 aria-hidden="true" className="me-1 h-3.5 w-3.5" />
                 {t.admin.manage.deleteMetricAction}
               </Button>

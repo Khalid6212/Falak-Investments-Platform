@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { sendChangesRequestedEmail, sendReportRequestEmail } from "@/lib/email/send-email";
 import { errorMessage, logRequestEmails, type RequestEmailLogEntry } from "@/lib/reporting/request-email-log";
-import { RECIPIENT_SELECT, createFormLink, formLinkUrl, startupRecipients } from "@/lib/reporting/form-link";
+import { RECIPIENT_SELECT, createFormLink, formLinkUrl, investmentProfessionalCc, startupRecipients } from "@/lib/reporting/form-link";
 
 export interface ReportRequestNotifyResult {
   emailed: string[];
@@ -57,11 +57,14 @@ export async function notifyReportRequest(
       result.noContact.push(company.nameEn);
       continue;
     }
+    // The startup's investment professionals are copied once, on the first email.
+    let cc = await investmentProfessionalCc(company.department, recipients);
     let anySent = false;
     for (const to of recipients) {
       try {
         const token = await createFormLink(db, cycleId, to);
-        await sendReportRequestEmail(to, { companyName: company.nameEn, periodLabel: request.periodLabel, deadline, url: formLinkUrl(baseUrl!, token) });
+        await sendReportRequestEmail(to, { companyName: company.nameEn, periodLabel: request.periodLabel, deadline, url: formLinkUrl(baseUrl!, token), cc });
+        cc = [];
         anySent = true;
         log.push({ cycleId, recipientEmail: to, kind: "request", status: "sent", sentById: actorId });
       } catch (error) {
@@ -98,16 +101,20 @@ export async function notifyChangesRequested(submissionId: string, comment: stri
     });
     if (!submission) return false;
     const { cycle } = submission;
-    for (const to of startupRecipients(cycle.company)) {
+    const recipients = startupRecipients(cycle.company);
+    let cc = await investmentProfessionalCc(cycle.company.department, recipients);
+    for (const to of recipients) {
       try {
         const token = await createFormLink(db, cycle.id, to);
         await sendChangesRequestedEmail(to, {
+          cc,
           companyName: cycle.company.nameEn,
           periodLabel: cycle.periodLabel,
           deadline: cycle.currentDeadline.toISOString().slice(0, 10),
           comment,
           url: formLinkUrl(baseUrl, token),
         });
+        cc = [];
         anySent = true;
         log.push({ cycleId: cycle.id, recipientEmail: to, kind: "changes_requested", status: "sent", sentById: actorId });
       } catch (error) {

@@ -74,6 +74,13 @@ function TemplateFields({
           <FieldError state={state} id="tpl-nameAr" name="nameAr" />
         </div>
       </div>
+      <label className="inline-flex items-start gap-2 text-sm text-foreground">
+        <input type="checkbox" name="collectFinancialStatements" className="mt-1" defaultChecked={value("collectFinancialStatements") === "on"} />
+        <span>
+          {t.admin.manage.collectStatementsLabel}
+          <span className="block text-xs text-muted-foreground">{t.admin.manage.collectStatementsHint}</span>
+        </span>
+      </label>
 
       <p className="text-xs text-muted-foreground">{t.admin.manage.metricKeyHint}</p>
       <div className="flex flex-col gap-3">
