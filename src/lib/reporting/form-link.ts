@@ -89,9 +89,9 @@ export type FormLinkView =
       status: SubmissionStatus;
       editable: boolean;
       metrics: SubmissionMetricFieldDTO[];
-      /** The template asks for last year's financial statements. */
+      /** This cycle asks for financial statements (set per request). */
       collectStatements: boolean;
-      /** "Last year": the year before the period ends. */
+      /** The year asked for; only meaningful when collectStatements. */
       statementsYear: number;
       /** Files sent through the emailed links (names only; Falak downloads them). */
       statements: { fileName: string; audited: boolean }[];
@@ -111,9 +111,8 @@ async function findLink(rawToken: string) {
           id: true,
           templateId: true,
           periodLabel: true,
-          periodEnd: true,
           currentDeadline: true,
-          template: { select: { collectFinancialStatements: true } },
+          statementsYear: true,
           company: { select: { nameEn: true, nameAr: true, currency: true, archivedAt: true, deletedAt: true } },
           submission: { select: { id: true, status: true } },
         },
@@ -147,9 +146,9 @@ export async function getFormLinkView(rawToken: string): Promise<FormLinkView> {
     status: submission.status,
     editable: SUBMITTABLE_FROM_STATUSES.includes(submission.status),
     metrics: await fetchSubmissionMetricFields(db, submission.id, cycle.templateId),
-    collectStatements: cycle.template.collectFinancialStatements,
-    statementsYear: cycle.periodEnd.getUTCFullYear() - 1,
-    statements: cycle.template.collectFinancialStatements
+    collectStatements: cycle.statementsYear !== null,
+    statementsYear: cycle.statementsYear ?? 0,
+    statements: cycle.statementsYear !== null
       ? (
           await db.attachment.findMany({
             where: { submissionId: submission.id, ownerType: "SUBMISSION", uploadedById: null },
@@ -202,7 +201,7 @@ export interface StatementUploadResult {
  */
 export async function uploadStatementViaFormLink(rawToken: string, file: File, audited: boolean): Promise<StatementUploadResult> {
   const link = await findLink(rawToken);
-  if (!link?.cycle.submission || !link.cycle.template.collectFinancialStatements) return { error: INVALID_LINK, success: false };
+  if (!link?.cycle.submission || link.cycle.statementsYear === null) return { error: INVALID_LINK, success: false };
   const submission = link.cycle.submission;
   if (!SUBMITTABLE_FROM_STATUSES.includes(submission.status)) return { error: LOCKED, success: false };
   if (file.size === 0) return { error: "Choose a file to upload.", success: false };

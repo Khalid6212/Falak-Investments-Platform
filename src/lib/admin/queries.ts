@@ -156,6 +156,7 @@ export async function getAdminPortfolioData(): Promise<AdminPortfolioData> {
       nameEn: t.nameEn,
       nameAr: t.nameAr,
       isActive: t.isActive,
+      collectFinancialStatements: t.collectFinancialStatements,
     })),
   };
 }

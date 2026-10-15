@@ -44,7 +44,7 @@ function makeStub(options: LinkOptions = {}) {
                   templateId: "tpl_1",
                   periodLabel: "Q3 2026",
                   periodEnd: new Date("2026-09-30T00:00:00Z"),
-                  template: { collectFinancialStatements: options.statements ?? false },
+                  statementsYear: options.statements ? 2025 : null,
                   currentDeadline: new Date("2026-10-15T00:00:00Z"),
                   company: {
                     nameEn: "Acme",

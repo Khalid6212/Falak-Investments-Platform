@@ -32,6 +32,10 @@ export function CreateReportingCycleForm({
   // Read from the latest server data, so startups just added show as sent.
   const addingTo = groups.find((g) => g.key === addingKey) ?? null;
   const activeCompanies = companies.filter((c) => !c.archivedAt);
+  // "Ask for financial statements": pre-ticked from the chosen template, or
+  // from the request being added to.
+  const [askStatements, setAskStatements] = useState(false);
+  const asking = addingTo ? addingTo.statementsYear !== null : askStatements;
   const alreadySent = new Set(addingTo?.companyIds ?? []);
   const companyName = (id: string) => {
     const c = companies.find((x) => x.id === id);
@@ -108,7 +112,13 @@ export function CreateReportingCycleForm({
           <>
             <div className={fieldClass}>
               <label className={labelClass} htmlFor="cy-template">{t.admin.manage.templateLabel}</label>
-              <Select id="cy-template" name="templateId" required defaultValue="">
+              <Select
+                id="cy-template"
+                name="templateId"
+                required
+                defaultValue=""
+                onChange={(e) => setAskStatements(templates.find((tpl) => tpl.id === e.target.value)?.collectFinancialStatements ?? false)}
+              >
                 <option value="" disabled>{t.admin.manage.selectPlaceholder}</option>
                 {templates.map((tpl) => (
                   <option key={tpl.id} value={tpl.id}>{lang === "ar" ? tpl.nameAr : tpl.nameEn}</option>
@@ -139,6 +149,38 @@ export function CreateReportingCycleForm({
           <Input id="cy-deadline" name="deadline" type="date" required defaultValue={addingTo?.deadline ?? ""} />
           {errorFor("deadline")}
         </div>
+        {addingTo ? (
+          addingTo.statementsYear !== null ? (
+            <>
+              <input type="hidden" name="askStatements" value="on" />
+              <input type="hidden" name="statementsYear" value={addingTo.statementsYear} />
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                {t.admin.manage.statementsAskedNote.replace("{year}", String(addingTo.statementsYear))}
+              </p>
+            </>
+          ) : null
+        ) : (
+          <div className="flex flex-wrap items-end gap-3 sm:col-span-2">
+            <label className="inline-flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" name="askStatements" checked={asking} onChange={(e) => setAskStatements(e.target.checked)} />
+              {t.admin.manage.askStatementsLabel}
+            </label>
+            {asking ? (
+              <div className={fieldClass}>
+                <label className={labelClass} htmlFor="cy-statements-year">{t.admin.manage.statementsYearLabel}</label>
+                <Input
+                  id="cy-statements-year"
+                  name="statementsYear"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder={t.admin.manage.statementsYearPlaceholder}
+                  className="w-40"
+                />
+                {errorFor("statementsYear")}
+              </div>
+            ) : null}
+          </div>
+        )}
         <div className="sm:col-span-2">
           <FormMessage state={state} />
         </div>

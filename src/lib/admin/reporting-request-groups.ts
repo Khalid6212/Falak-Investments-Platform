@@ -12,6 +12,8 @@ export interface ReportingRequestGroup {
   periodEnd: string;
   // The deadline the request was first sent with.
   deadline: string;
+  /** Financial statements year asked for, or null when not asked. */
+  statementsYear: number | null;
   companyIds: string[];
 }
 
@@ -40,6 +42,7 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
       periodStart: true,
       periodEnd: true,
       originalDeadline: true,
+      statementsYear: true,
       template: { select: { nameEn: true, nameAr: true } },
     },
   });
@@ -56,8 +59,10 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
       periodStart: toDateOnly(c.periodStart),
       periodEnd: toDateOnly(c.periodEnd),
       deadline: toDateOnly(c.originalDeadline),
+      statementsYear: null,
       companyIds: [],
     };
+    group.statementsYear ??= c.statementsYear;
     if (toDateOnly(c.originalDeadline) < group.deadline) group.deadline = toDateOnly(c.originalDeadline);
     group.companyIds.push(c.companyId);
     groups.set(key, group);

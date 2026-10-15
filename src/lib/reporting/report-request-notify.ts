@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { sendChangesRequestedEmail, sendReportRequestEmail } from "@/lib/email/send-email";
+import { longDate, periodPhrase } from "@/lib/email/report-wording";
 import { errorMessage, logRequestEmails, type RequestEmailLogEntry } from "@/lib/reporting/request-email-log";
 import { RECIPIENT_SELECT, createFormLink, formLinkUrl, investmentProfessionalCc, startupRecipients } from "@/lib/reporting/form-link";
 
@@ -33,16 +34,20 @@ export async function notifyReportRequest(
 ): Promise<ReportRequestNotifyResult> {
   const result: ReportRequestNotifyResult = { emailed: [], invited: [], noContact: [], failed: [] };
   const baseUrl = process.env.APP_BASE_URL;
-  const deadline = request.deadline.toISOString().slice(0, 10);
   const cycleIdByCompany = new Map(cycles.map((c) => [c.companyId, c.cycleId]));
   const log: RequestEmailLogEntry[] = [];
 
   let companies;
+  let cycleRows;
   try {
     if (!baseUrl) throw new Error("APP_BASE_URL is not configured");
     companies = await db.company.findMany({
       where: { id: { in: [...cycleIdByCompany.keys()] }, archivedAt: null },
       select: { id: true, nameEn: true, ...RECIPIENT_SELECT },
+    });
+    cycleRows = await db.reportingCycle.findMany({
+      where: { id: { in: cycles.map((c) => c.cycleId) } },
+      select: { id: true, periodStart: true, periodEnd: true, currentDeadline: true, statementsYear: true },
     });
   } catch (error) {
     // The requests already exist; report delivery as failed rather than break.
@@ -52,6 +57,7 @@ export async function notifyReportRequest(
 
   for (const company of companies) {
     const cycleId = cycleIdByCompany.get(company.id)!;
+    const cycle = cycleRows.find((c) => c.id === cycleId);
     const recipients = startupRecipients(company);
     if (recipients.length === 0) {
       result.noContact.push(company.nameEn);
@@ -63,7 +69,16 @@ export async function notifyReportRequest(
     for (const to of recipients) {
       try {
         const token = await createFormLink(db, cycleId, to);
-        await sendReportRequestEmail(to, { companyName: company.nameEn, periodLabel: request.periodLabel, deadline, url: formLinkUrl(baseUrl!, token), cc });
+        await sendReportRequestEmail(to, {
+          companyName: company.nameEn,
+          periodLabel: request.periodLabel,
+          periodPhrase: cycle ? periodPhrase(cycle.periodStart, cycle.periodEnd, request.periodLabel) : `the ${request.periodLabel} period`,
+          // Each startup's own deadline: one may have been extended.
+          deadline: longDate(cycle?.currentDeadline ?? request.deadline),
+          url: formLinkUrl(baseUrl!, token),
+          statementsYear: cycle?.statementsYear ?? null,
+          cc,
+        });
         cc = [];
         anySent = true;
         log.push({ cycleId, recipientEmail: to, kind: "request", status: "sent", sentById: actorId });

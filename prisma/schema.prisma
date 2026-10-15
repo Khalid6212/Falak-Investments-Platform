@@ -660,8 +660,8 @@ model ReportingTemplate {
   nameAr    String
   version   Int      @default(1)
   isActive  Boolean  @default(true)
-  // The form also asks for last year's financial statements (upload).
-  // Those files stay with Falak; investors never see them.
+  // Default for new reporting cycles: pre-ticks "ask for financial
+  // statements" (ReportingCycle.statementsYear decides per cycle).
   collectFinancialStatements Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -767,6 +767,9 @@ model ReportingCycle {
   periodEnd        DateTime          @db.Date
   originalDeadline DateTime          @db.Date
   currentDeadline  DateTime          @db.Date
+  // Financial statements asked for in this cycle: the year wanted, or null
+  // when not asked. Set per request (the template only pre-ticks it).
+  statementsYear   Int?
   status           CycleStatus       @default(Open)
   openedAt         DateTime          @default(now())
   closedAt         DateTime?

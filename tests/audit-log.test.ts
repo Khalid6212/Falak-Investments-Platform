@@ -883,3 +883,76 @@ test("linkVehicleToCompanyAction: ownership % is optional; without it no ownersh
   assert.equal(agreement?.ownershipPct, null);
   assert.equal(snapshots, 0);
 });
+
+test("createReportingCycleAction stores the statements ask per cycle: the year given, the year before the period ends, or none", async () => {
+  const actions = await import("../src/app/admin/actions.ts");
+  setCurrentUser(REAL_USER);
+  const cases: [Record<string, string>, number | null][] = [
+    [{ askStatements: "on", statementsYear: "2024" }, 2024],
+    [{ askStatements: "on" }, 2025],
+    [{ statementsYear: "2024" }, null],
+  ];
+  for (const [extra, expected] of cases) {
+    const created: Record<string, unknown>[] = [];
+    setDbStub(
+      makeAdminActionDbStub({
+        falakRoles: ADMIN_ROLE,
+        models: {
+          reportingCycle: {
+            findUnique: async () => null,
+            create: async ({ data }: { data: Record<string, unknown> }) => {
+              created.push(data);
+              return { id: "cycle_new", ...data };
+            },
+          },
+          companySubmission: { create: async ({ data }: { data: Record<string, unknown> }) => ({ id: "sub_new", ...data }) },
+        },
+      })
+    );
+    const formData = new FormData();
+    formData.append("companyIds", "co_1");
+    formData.set("templateId", "tmpl_1");
+    formData.set("periodLabel", "Q3 2026");
+    formData.set("periodStart", "2026-07-01");
+    formData.set("periodEnd", "2026-09-30");
+    formData.set("deadline", "2026-10-15");
+    for (const [k, v] of Object.entries(extra)) formData.set(k, v);
+    const result = await actions.createReportingCycleAction({ error: null }, formData);
+    assert.equal(result.error, null, JSON.stringify(extra));
+    assert.equal(created[0].statementsYear, expected, JSON.stringify(extra));
+  }
+});
+
+test("setRequestStatementsAction sets or clears the ask on every cycle in the request", async () => {
+  const actions = await import("../src/app/admin/actions.ts");
+  setCurrentUser(REAL_USER);
+  const updates: Record<string, unknown>[] = [];
+  const db = makeAdminActionDbStub({
+    falakRoles: ADMIN_ROLE,
+    models: {
+      reportingCycle: {
+        findMany: async () => [{ id: "cy_1" }, { id: "cy_2" }],
+        updateMany: async (args: Record<string, unknown>) => {
+          updates.push(args);
+          return { count: 2 };
+        },
+      },
+    },
+  });
+  setDbStub(db);
+  const base = { templateId: "tmpl_1", periodStart: "2026-07-01", periodEnd: "2026-09-30" };
+  const run = (extra: Record<string, string>) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ ...base, ...extra })) fd.set(k, v);
+    return actions.setRequestStatementsAction({ error: null }, fd);
+  };
+
+  assert.equal((await run({ askStatements: "on", statementsYear: "2024" })).error, null);
+  assert.deepEqual(updates[0], { where: { id: { in: ["cy_1", "cy_2"] } }, data: { statementsYear: 2024 } });
+  assert.equal((await run({})).error, null);
+  assert.deepEqual((updates[1] as { data: unknown }).data, { statementsYear: null });
+  const bad = await run({ askStatements: "on", statementsYear: "25" });
+  assert.ok(bad.fieldErrors?.statementsYear);
+  assert.equal(updates.length, 2);
+  assert.ok(db.getAuditEvents().some((e) => e.action === "reporting_request.statements_set"));
+});

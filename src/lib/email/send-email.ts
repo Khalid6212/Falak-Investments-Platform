@@ -157,23 +157,53 @@ const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /**
- * Sent when Falak requests a report from a startup. `isInvite` means the
- * recipient has no login yet: the link is an invitation that creates
- * their access and leads to the reporting form.
+ * Sent when Falak requests a report from a startup: a personal link to the
+ * form, no account needed. `statementsYear` is set when the template asks
+ * for financial statements (the form then has an upload box).
  */
 export async function sendReportRequestEmail(
   to: string,
-  details: { companyName: string; periodLabel: string; deadline: string; url: string; cc?: string[] }
+  details: {
+    companyName: string;
+    periodLabel: string;
+    /** e.g. "Quarter Three (Q3 2026)" -- see report-wording.ts. */
+    periodPhrase: string;
+    /** e.g. "15 October 2026". */
+    deadline: string;
+    url: string;
+    statementsYear?: number | null;
+    cc?: string[];
+  }
 ): Promise<void> {
-  const { companyName, periodLabel, deadline, url } = details;
-  const action = LINK_ACTION;
+  const { companyName, periodLabel, periodPhrase, deadline, url, statementsYear } = details;
+  const paragraphs = [
+    "Dear Founder,",
+    `We are glad to connect with you, and hope that all is well with our portfolio company, ${companyName}.`,
+    `As part of our reporting process, please use the link below to fill in your metrics for ${periodPhrase}.`,
+    null, // the link
+    `The deadline to fill in the form is ${deadline}, so that we can compile our internal reports and our reports to investors.`,
+    statementsYear
+      ? `Kindly also attach the financial statements for ${statementsYear}, audited if possible. You can upload them on the same form.`
+      : "",
+    `We appreciate your collaboration and the close relationship we have as Falak with ${companyName}.`,
+  ].filter((p) => p !== "");
+  const note = "This link is personal to you and needs no account. Anyone with it can submit the report, so please keep it within your team.";
+
+  const button = `<p style="margin:20px 0"><a href="${escapeHtml(url)}" style="display:inline-block;background:#0b3b3c;color:#ffffff;padding:10px 20px;text-decoration:none;font-weight:600">Fill in the ${escapeHtml(periodLabel)} report</a></p><p style="font-size:12px;color:#666">Or copy this link: ${escapeHtml(url)}</p>`;
+  const html =
+    `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1a1a1a;max-width:600px">` +
+    paragraphs.map((p) => (p === null ? button : `<p>${escapeHtml(p)}</p>`)).join("") +
+    `<p>Best regards,<br>Falak Ventures</p>` +
+    `<p style="margin-top:24px;font-size:12px;color:#666">${escapeHtml(note)}</p></div>`;
+  const text = [...paragraphs.map((p) => (p === null ? url : p)), "Best regards,\nFalak Ventures", `--\n${note}`].join("\n\n");
+
   await deliver(
     {
       to,
       cc: details.cc,
-      subject: `Falak report request: ${periodLabel} -- ${companyName}`,
-      html: `<p>Falak Ventures has requested the ${escapeHtml(periodLabel)} report for ${escapeHtml(companyName)}, due on ${escapeHtml(deadline)}.</p><p>${action}</p><p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
-      text: `Falak Ventures has requested the ${periodLabel} report for ${companyName}, due on ${deadline}.\n\n${action}\n\n${url}`,
+      subject: `Falak Ventures | ${periodLabel} report request -- ${companyName}`,
+      html,
+      text,
     },
     "report-request"
   );

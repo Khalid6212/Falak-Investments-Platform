@@ -895,6 +895,9 @@ export async function createReportingTemplateAction(_prevState: ActionState, for
 // Reporting cycle (auto-creates its 1:1 CompanySubmission)
 // ============================================================
 
+const STATEMENTS_YEAR_ERROR = "Enter a year, e.g. 2025.";
+const isStatementsYear = (raw: string) => /^\d{4}$/.test(raw) && Number(raw) >= 2000 && Number(raw) <= 2100;
+
 export async function createReportingCycleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   let user;
   let departments: Department[] | null = null;
@@ -913,9 +916,12 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
   const periodStartRaw = readString(formData, "periodStart");
   const periodEndRaw = readString(formData, "periodEnd");
   const deadlineRaw = readString(formData, "deadline");
+  const askStatements = formData.get("askStatements") === "on";
+  const statementsYearRaw = readString(formData, "statementsYear");
 
   const invalid = checkFields([
     ["companyIds", companyIds.length > 0, "Select at least one startup."],
+    ["statementsYear", !askStatements || !statementsYearRaw || isStatementsYear(statementsYearRaw), STATEMENTS_YEAR_ERROR],
     ["templateId", templateId, FIELD.choose],
     ["periodLabel", isValidName(periodLabel), FIELD.required],
     ["periodStart", isDateInput(periodStartRaw), FIELD.date],
@@ -933,6 +939,8 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
   const periodStart = new Date(periodStartRaw);
   const periodEnd = new Date(periodEndRaw);
   const deadline = new Date(deadlineRaw);
+  // Blank year: the year before the period ends (Q3 2026 -> 2025).
+  const statementsYear = askStatements ? (statementsYearRaw ? Number(statementsYearRaw) : periodEnd.getUTCFullYear() - 1) : null;
   if (departments !== null) {
     const inScopeCount = await db.company.count({
       where: { id: { in: companyIds }, department: { in: departments } },
@@ -967,6 +975,7 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
             periodEnd,
             originalDeadline: deadline,
             currentDeadline: deadline,
+            statementsYear,
             status: "Open",
           },
         });
@@ -1040,6 +1049,61 @@ export async function resendReportRequestAction(_prevState: ActionState, formDat
  * Only while the startup can still fill it in -- once submitted there is
  * nothing to ask for.
  */
+/**
+ * Turns the financial statements ask on or off for a whole reporting
+ * request (template + period), or changes its year -- for the startups in
+ * the caller's department. Takes effect on the startups' form links and
+ * on the next emails; nothing is sent from here.
+ */
+export async function setRequestStatementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  let departments: Department[] | null = null;
+  try {
+    ({ user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+
+  const templateId = readString(formData, "templateId");
+  const periodStartRaw = readString(formData, "periodStart");
+  const periodEndRaw = readString(formData, "periodEnd");
+  if (!templateId || !isDateInput(periodStartRaw) || !isDateInput(periodEndRaw)) return { error: GENERIC_ERROR };
+  const periodEnd = new Date(periodEndRaw!);
+  const ask = formData.get("askStatements") === "on";
+  const yearRaw = readString(formData, "statementsYear");
+  if (ask && yearRaw && !isStatementsYear(yearRaw)) {
+    return { error: FIX_HIGHLIGHTED, fieldErrors: { statementsYear: STATEMENTS_YEAR_ERROR } };
+  }
+  const statementsYear = ask ? (yearRaw ? Number(yearRaw) : periodEnd.getUTCFullYear() - 1) : null;
+
+  try {
+    await db.$transaction(async (tx) => {
+      const cycles = await tx.reportingCycle.findMany({
+        where: {
+          templateId,
+          periodStart: new Date(periodStartRaw!),
+          periodEnd,
+          company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
+        },
+        select: { id: true },
+      });
+      if (cycles.length === 0) throw new Error("no cycles");
+      await tx.reportingCycle.updateMany({ where: { id: { in: cycles.map((c) => c.id) } }, data: { statementsYear } });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "reporting_request.statements_set",
+        targetType: "ReportingTemplate",
+        targetId: templateId,
+        meta: { periodStart: periodStartRaw, periodEnd: periodEndRaw, statementsYear, cycleIds: cycles.map((c) => c.id) },
+      });
+    });
+  } catch {
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
 export async function resendCycleRequestAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   let user;
   let departments: Department[] | null = null;

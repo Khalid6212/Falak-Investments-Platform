@@ -37,6 +37,8 @@ export interface ReportingRequestDetail {
   periodStart: string;
   periodEnd: string;
   fieldCount: number;
+  /** Financial statements year asked for, or null when not asked. */
+  statementsYear: number | null;
   rows: RequestStartupRow[];
   /** False when the email log couldn't be read (rows then show no emails). */
   emailLogAvailable: boolean;
@@ -73,6 +75,7 @@ export async function getReportingRequestDetail(
       periodLabel: true,
       openedAt: true,
       currentDeadline: true,
+      statementsYear: true,
       template: { select: { nameEn: true, nameAr: true, _count: { select: { metrics: { where: { isActive: true } } } } } },
       company: { select: { id: true, slug: true, nameEn: true, nameAr: true } },
       submission: {
@@ -126,6 +129,7 @@ export async function getReportingRequestDetail(
     periodStart: toDateOnly(start),
     periodEnd: toDateOnly(end),
     fieldCount: first.template._count.metrics,
+    statementsYear: cycles.find((c) => c.statementsYear !== null)?.statementsYear ?? null,
     emailLogAvailable,
     rows: cycles.map((c) => {
       const own = emails.filter((e) => e.cycleId === c.id);

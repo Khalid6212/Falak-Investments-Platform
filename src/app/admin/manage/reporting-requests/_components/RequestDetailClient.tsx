@@ -11,8 +11,9 @@ import { useForm } from "@/components/forms/useForm";
 import { useListView, byText, byValue } from "@/components/lists/useListView";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatDate } from "@/lib/format";
-import { resendCycleRequestAction } from "@/app/admin/actions";
-import { initialActionState } from "../../_components/shared";
+import { resendCycleRequestAction, setRequestStatementsAction } from "@/app/admin/actions";
+import { Input } from "@/components/ui/Input";
+import { initialActionState, FormMessage } from "../../_components/shared";
 import type { ReportingRequestDetail, RequestStartupRow } from "@/lib/admin/reporting-request-detail";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 
@@ -129,6 +130,47 @@ function StartupRow({ row, fieldCount }: { row: RequestStartupRow; fieldCount: n
   );
 }
 
+/** Turns the financial statements ask on or off for the whole request, or changes its year. */
+function StatementsAskForm({ detail }: { detail: ReportingRequestDetail }) {
+  const { t } = useLanguage();
+  const m = t.admin.manage;
+  const { state, isPending, errorFor, formProps } = useForm(setRequestStatementsAction, initialActionState, { resetOnSuccess: false });
+  const [asking, setAsking] = useState(detail.statementsYear !== null);
+  return (
+    <form {...formProps} className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--control-border)] pt-3">
+      <input type="hidden" name="templateId" value={detail.templateId} />
+      <input type="hidden" name="periodStart" value={detail.periodStart} />
+      <input type="hidden" name="periodEnd" value={detail.periodEnd} />
+      <label className="inline-flex items-center gap-2 text-sm text-foreground">
+        <input type="checkbox" name="askStatements" checked={asking} onChange={(e) => setAsking(e.target.checked)} />
+        {m.askStatementsLabel}
+      </label>
+      {asking ? (
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="req-statements-year">{m.statementsYearLabel}</label>
+          <Input
+            id="req-statements-year"
+            name="statementsYear"
+            inputMode="numeric"
+            maxLength={4}
+            defaultValue={detail.statementsYear ?? ""}
+            placeholder={m.statementsYearPlaceholder}
+            className="w-40"
+          />
+          {errorFor("statementsYear")}
+        </div>
+      ) : null}
+      <Button type="submit" variant="outline" size="sm" disabled={isPending}>
+        {m.saveChangesLabel}
+      </Button>
+      <p className="w-full text-xs text-muted-foreground">{m.statementsAskHint}</p>
+      <div className="w-full">
+        <FormMessage state={state} />
+      </div>
+    </form>
+  );
+}
+
 export function RequestDetailClient({ detail }: { detail: ReportingRequestDetail }) {
   const { t, lang } = useLanguage();
   const m = t.admin.manage;
@@ -157,6 +199,7 @@ export function RequestDetailClient({ detail }: { detail: ReportingRequestDetail
         </p>
         <p className="mt-2 text-xs text-muted-foreground">{m.requestDetailIntro}</p>
         {!detail.emailLogAvailable ? <p className="mt-2 text-xs font-semibold text-danger">{m.emailLogUnavailable}</p> : null}
+        <StatementsAskForm key={String(detail.statementsYear)} detail={detail} />
       </Card>
 
       {controls}

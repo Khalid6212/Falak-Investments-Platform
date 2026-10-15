@@ -385,6 +385,11 @@ export interface Dictionary {
       templateActiveLabel: string;
       collectStatementsLabel: string;
       collectStatementsHint: string;
+      askStatementsLabel: string;
+      statementsYearLabel: string;
+      statementsYearPlaceholder: string;
+      statementsAskedNote: string;
+      statementsAskHint: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1191,8 +1196,13 @@ export const en = {
       editTemplateTitle: "Edit Reporting Template",
       templatesListTitle: "Templates",
       templateActiveLabel: "Active (offered for new reporting cycles)",
-      collectStatementsLabel: "Ask for last year's financial statements",
-      collectStatementsHint: "Startups get an upload box on the report form. The files stay with Falak; investors never see them.",
+      collectStatementsLabel: "Ask for financial statements by default",
+      collectStatementsHint: "Pre-ticks \"Ask for financial statements\" when you create a reporting cycle with this template; you choose per cycle. The files stay with Falak; investors never see them.",
+      askStatementsLabel: "Ask for financial statements",
+      statementsYearLabel: "Statements for year",
+      statementsYearPlaceholder: "Blank = year before the period ends",
+      statementsAskedNote: "This request asks for the {year} financial statements; added startups are asked too.",
+      statementsAskHint: "Applies to every startup in this request: their form shows the upload box, and the next emails ask for these statements.",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2005,8 +2015,13 @@ export const ar = {
       editTemplateTitle: "تعديل قالب التقارير",
       templatesListTitle: "القوالب",
       templateActiveLabel: "نشط (متاح لدورات التقارير الجديدة)",
-      collectStatementsLabel: "طلب القوائم المالية للسنة الماضية",
-      collectStatementsHint: "يظهر للشركات خانة لرفع الملفات في نموذج التقرير. تبقى الملفات لدى فلك ولا يراها المستثمرون.",
+      collectStatementsLabel: "طلب القوائم المالية افتراضياً",
+      collectStatementsHint: "يحدد مسبقاً خيار \"طلب القوائم المالية\" عند إنشاء دورة تقارير بهذا النموذج، والقرار لكل دورة. تبقى الملفات لدى فلك ولا يراها المستثمرون.",
+      askStatementsLabel: "طلب القوائم المالية",
+      statementsYearLabel: "القوائم المالية لعام",
+      statementsYearPlaceholder: "فارغ = السنة السابقة لنهاية الفترة",
+      statementsAskedNote: "يطلب هذا الطلب القوائم المالية لعام {year}، وستُطلب أيضاً من الشركات المضافة.",
+      statementsAskHint: "ينطبق على جميع الشركات في هذا الطلب: يظهر في نموذجها خانة الرفع، وتطلب الرسائل القادمة هذه القوائم.",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",

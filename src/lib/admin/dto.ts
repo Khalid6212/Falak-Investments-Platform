@@ -87,6 +87,8 @@ export interface AdminReportingTemplateDTO {
   nameEn: string;
   nameAr: string;
   isActive: boolean;
+  /** Pre-ticks "ask for financial statements" on new requests. */
+  collectFinancialStatements: boolean;
 }
 
 export interface AdminPortfolioData {
