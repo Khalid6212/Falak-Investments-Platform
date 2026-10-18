@@ -1533,6 +1533,16 @@ export interface ReminderCycleFixture {
   /** Founder email on the company record -- may have no account. */
   founderEmail?: string | null;
   submissionStatus: string | null;
+  lastReminderKind?: string | null;
+  /** Defaults: on, daily from 7 days out, daily overdue for 14 days. */
+  reminders?: Partial<{
+    remindersEnabled: boolean;
+    reminderStartDays: number;
+    reminderEveryDays: number;
+    overdueRemindersEnabled: boolean;
+    overdueEveryDays: number;
+    overdueForDays: number;
+  }>;
 }
 
 /** Active investment professionals by department, for the Cc lookup. */
@@ -1569,12 +1579,25 @@ export function makeRemindersDbStub(cycles: ReminderCycleFixture[], investmentPr
     reportingCycle: {
       findMany: async () =>
         state
-          .filter((c) => c.submissionStatus === null || c.submissionStatus === "draft" || c.submissionStatus === "changes_requested")
           .map((c) => ({
+            remindersEnabled: true,
+            reminderStartDays: 7,
+            reminderEveryDays: 1,
+            overdueRemindersEnabled: true,
+            overdueEveryDays: 1,
+            overdueForDays: 14,
+            ...c.reminders,
+            c,
+          }))
+          // Mirrors the where clause: switched on, not yet turned in.
+          .filter(({ c, remindersEnabled }) => remindersEnabled && (c.submissionStatus === null || c.submissionStatus === "draft" || c.submissionStatus === "changes_requested"))
+          .map(({ c, ...settings }) => ({
+            ...settings,
             id: c.id,
             periodLabel: c.periodLabel,
             currentDeadline: c.currentDeadline,
             lastReminderSentAt: c.lastReminderSentAt ?? null,
+            lastReminderKind: c.lastReminderKind ?? null,
             company: {
               slug: c.companySlug,
               nameEn: c.companyNameEn,

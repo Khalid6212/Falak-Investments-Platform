@@ -770,6 +770,16 @@ model ReportingCycle {
   // Financial statements asked for in this cycle: the year wanted, or null
   // when not asked. Set per request (the template only pre-ticks it).
   statementsYear   Int?
+  // Deadline reminders, set per request by Falak staff; none are sent
+  // unless switched on. Before the deadline: from reminderStartDays out,
+  // every reminderEveryDays (the deadline day included). After it, only
+  // if overdueRemindersEnabled: every overdueEveryDays for overdueForDays.
+  remindersEnabled        Boolean @default(false)
+  reminderStartDays       Int     @default(7)
+  reminderEveryDays       Int     @default(2)
+  overdueRemindersEnabled Boolean @default(false)
+  overdueEveryDays        Int     @default(3)
+  overdueForDays          Int     @default(14)
   status           CycleStatus       @default(Open)
   openedAt         DateTime          @default(now())
   closedAt         DateTime?
