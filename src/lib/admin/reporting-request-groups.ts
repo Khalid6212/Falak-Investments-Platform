@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
+import type { ReminderSettings } from "@/lib/reporting/reminder-schedule";
 
 export interface ReportingRequestGroup {
   key: string;
@@ -14,6 +15,8 @@ export interface ReportingRequestGroup {
   deadline: string;
   /** Financial statements year asked for, or null when not asked. */
   statementsYear: number | null;
+  /** Startups added to the request get these reminder settings. */
+  reminders: ReminderSettings;
   companyIds: string[];
 }
 
@@ -43,6 +46,12 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
       periodEnd: true,
       originalDeadline: true,
       statementsYear: true,
+      remindersEnabled: true,
+      reminderStartDays: true,
+      reminderEveryDays: true,
+      overdueRemindersEnabled: true,
+      overdueEveryDays: true,
+      overdueForDays: true,
       template: { select: { nameEn: true, nameAr: true } },
     },
   });
@@ -60,6 +69,14 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
       periodEnd: toDateOnly(c.periodEnd),
       deadline: toDateOnly(c.originalDeadline),
       statementsYear: null,
+      reminders: {
+        remindersEnabled: c.remindersEnabled,
+        reminderStartDays: c.reminderStartDays,
+        reminderEveryDays: c.reminderEveryDays,
+        overdueRemindersEnabled: c.overdueRemindersEnabled,
+        overdueEveryDays: c.overdueEveryDays,
+        overdueForDays: c.overdueForDays,
+      },
       companyIds: [],
     };
     group.statementsYear ??= c.statementsYear;

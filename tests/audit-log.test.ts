@@ -956,3 +956,76 @@ test("setRequestStatementsAction sets or clears the ask on every cycle in the re
   assert.equal(updates.length, 2);
   assert.ok(db.getAuditEvents().some((e) => e.action === "reporting_request.statements_set"));
 });
+
+test("createReportingCycleAction: reminders are off unless ticked, and saved with their numbers when they are", async () => {
+  const actions = await import("../src/app/admin/actions.ts");
+  setCurrentUser(REAL_USER);
+  const cases: [Record<string, string>, Record<string, unknown>][] = [
+    [{}, { remindersEnabled: false, overdueRemindersEnabled: false }],
+    [
+      { remindersEnabled: "on", reminderStartDays: "10", reminderEveryDays: "3", overdueRemindersEnabled: "on", overdueEveryDays: "2", overdueForDays: "21" },
+      { remindersEnabled: true, reminderStartDays: 10, reminderEveryDays: 3, overdueRemindersEnabled: true, overdueEveryDays: 2, overdueForDays: 21 },
+    ],
+    // Overdue ticked while reminders are off: still off.
+    [{ overdueRemindersEnabled: "on" }, { remindersEnabled: false, overdueRemindersEnabled: false }],
+  ];
+  for (const [extra, expected] of cases) {
+    const created: Record<string, unknown>[] = [];
+    setDbStub(
+      makeAdminActionDbStub({
+        falakRoles: ADMIN_ROLE,
+        models: {
+          reportingCycle: {
+            findUnique: async () => null,
+            create: async ({ data }: { data: Record<string, unknown> }) => {
+              created.push(data);
+              return { id: "cycle_new", ...data };
+            },
+          },
+          companySubmission: { create: async ({ data }: { data: Record<string, unknown> }) => ({ id: "sub_new", ...data }) },
+        },
+      })
+    );
+    const formData = new FormData();
+    formData.append("companyIds", "co_1");
+    for (const [k, v] of Object.entries({ templateId: "tmpl_1", periodLabel: "Q4 2026", periodStart: "2026-10-01", periodEnd: "2026-12-31", deadline: "2027-01-20", ...extra })) formData.set(k, v);
+    const result = await actions.createReportingCycleAction({ error: null }, formData);
+    assert.equal(result.error, null, JSON.stringify(extra));
+    for (const [k, v] of Object.entries(expected)) assert.equal(created[0][k], v, `${k} for ${JSON.stringify(extra)}`);
+  }
+});
+
+test("setRequestRemindersAction saves the settings on every cycle in the request and rejects out-of-range numbers", async () => {
+  const actions = await import("../src/app/admin/actions.ts");
+  setCurrentUser(REAL_USER);
+  const updates: { data: Record<string, unknown> }[] = [];
+  const db = makeAdminActionDbStub({
+    falakRoles: ADMIN_ROLE,
+    models: {
+      reportingCycle: {
+        findMany: async () => [{ id: "cy_1" }, { id: "cy_2" }],
+        updateMany: async (args: { data: Record<string, unknown> }) => {
+          updates.push(args);
+          return { count: 2 };
+        },
+      },
+    },
+  });
+  setDbStub(db);
+  const run = (extra: Record<string, string>) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries({ templateId: "tmpl_1", periodStart: "2026-07-01", periodEnd: "2026-09-30", ...extra })) fd.set(k, v);
+    return actions.setRequestRemindersAction({ error: null }, fd);
+  };
+  assert.equal((await run({ remindersEnabled: "on", reminderStartDays: "5", reminderEveryDays: "1" })).error, null);
+  assert.equal(updates[0].data.remindersEnabled, true);
+  assert.equal(updates[0].data.reminderStartDays, 5);
+  assert.equal(updates[0].data.overdueRemindersEnabled, false);
+  const bad = await run({ remindersEnabled: "on", reminderEveryDays: "0" });
+  assert.ok(bad.fieldErrors?.reminderEveryDays);
+  assert.equal(updates.length, 1);
+  // Switching off never trips over a bad number in a hidden field.
+  assert.equal((await run({ reminderEveryDays: "0" })).error, null);
+  assert.equal(updates[1].data.remindersEnabled, false);
+  assert.ok(db.getAuditEvents().some((e) => e.action === "reporting_request.reminders_set"));
+});

@@ -11,7 +11,8 @@ import { useForm } from "@/components/forms/useForm";
 import { useListView, byText, byValue } from "@/components/lists/useListView";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatDate } from "@/lib/format";
-import { resendCycleRequestAction, setRequestStatementsAction } from "@/app/admin/actions";
+import { resendCycleRequestAction, setRequestRemindersAction, setRequestStatementsAction } from "@/app/admin/actions";
+import { ReminderSettingsFields } from "../../_components/ReminderSettingsFields";
 import { Input } from "@/components/ui/Input";
 import { initialActionState, FormMessage } from "../../_components/shared";
 import type { ReportingRequestDetail, RequestStartupRow } from "@/lib/admin/reporting-request-detail";
@@ -130,6 +131,26 @@ function StartupRow({ row, fieldCount }: { row: RequestStartupRow; fieldCount: n
   );
 }
 
+/** The request's deadline reminders: off unless an investment professional switches them on. */
+function RemindersForm({ detail }: { detail: ReportingRequestDetail }) {
+  const { t } = useLanguage();
+  const m = t.admin.manage;
+  const { state, isPending, errorFor, formProps } = useForm(setRequestRemindersAction, initialActionState, { resetOnSuccess: false });
+  return (
+    <form {...formProps} className="mt-3 flex flex-col gap-3 border-t border-[var(--control-border)] pt-3">
+      <input type="hidden" name="templateId" value={detail.templateId} />
+      <input type="hidden" name="periodStart" value={detail.periodStart} />
+      <input type="hidden" name="periodEnd" value={detail.periodEnd} />
+      <ReminderSettingsFields initial={detail.reminders} errorFor={errorFor} />
+      <p className="text-xs text-muted-foreground">{m.remindersHint}</p>
+      <Button type="submit" variant="outline" size="sm" disabled={isPending} className="w-fit">
+        {m.saveChangesLabel}
+      </Button>
+      <FormMessage state={state} />
+    </form>
+  );
+}
+
 /** Turns the financial statements ask on or off for the whole request, or changes its year. */
 function StatementsAskForm({ detail }: { detail: ReportingRequestDetail }) {
   const { t } = useLanguage();
@@ -200,6 +221,7 @@ export function RequestDetailClient({ detail }: { detail: ReportingRequestDetail
         <p className="mt-2 text-xs text-muted-foreground">{m.requestDetailIntro}</p>
         {!detail.emailLogAvailable ? <p className="mt-2 text-xs font-semibold text-danger">{m.emailLogUnavailable}</p> : null}
         <StatementsAskForm key={String(detail.statementsYear)} detail={detail} />
+        <RemindersForm key={JSON.stringify(detail.reminders)} detail={detail} />
       </Card>
 
       {controls}

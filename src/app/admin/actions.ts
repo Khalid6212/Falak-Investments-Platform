@@ -26,6 +26,7 @@ import { convertToDisplay, type DisplayCurrency } from "@/lib/currency/convert";
 import { requestSignInLink } from "@/lib/auth/request-sign-in";
 import { hashPassword, MIN_PASSWORD_LENGTH, MAX_RAW_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { NUMERIC_DATA_TYPES, SYSTEM_METRIC_KEYS } from "@/lib/reporting/system-metric-keys";
+import { DEFAULT_REMINDER_SETTINGS, REMINDER_LIMITS, type ReminderSettings } from "@/lib/reporting/reminder-schedule";
 import type {
   Currency,
   MetricDataType,
@@ -936,6 +937,8 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
   if (invalid || !templateId || !periodLabel || !periodStartRaw || !periodEndRaw || !deadlineRaw) {
     return invalid ?? { error: GENERIC_ERROR };
   }
+  const reminders = readReminderSettings(formData);
+  if (Object.keys(reminders.fieldErrors).length > 0) return { error: FIX_HIGHLIGHTED, fieldErrors: reminders.fieldErrors };
   const periodStart = new Date(periodStartRaw);
   const periodEnd = new Date(periodEndRaw);
   const deadline = new Date(deadlineRaw);
@@ -976,6 +979,7 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
             originalDeadline: deadline,
             currentDeadline: deadline,
             statementsYear,
+            ...reminders.settings,
             status: "Open",
           },
         });
@@ -1049,6 +1053,90 @@ export async function resendReportRequestAction(_prevState: ActionState, formDat
  * Only while the startup can still fill it in -- once submitted there is
  * nothing to ask for.
  */
+/**
+ * Reads the reminder settings fields (remindersEnabled, reminderStartDays,
+ * reminderEveryDays, overdueRemindersEnabled, overdueEveryDays,
+ * overdueForDays). Numbers of a switched-off part keep their defaults
+ * unchecked, so a half-filled form never blocks turning reminders off.
+ */
+function readReminderSettings(formData: FormData): { settings: ReminderSettings; fieldErrors: FieldErrors } {
+  const fieldErrors: FieldErrors = {};
+  const remindersEnabled = formData.get("remindersEnabled") === "on";
+  const overdueRemindersEnabled = remindersEnabled && formData.get("overdueRemindersEnabled") === "on";
+  const num = (name: keyof typeof REMINDER_LIMITS, active: boolean): number => {
+    const fallback = DEFAULT_REMINDER_SETTINGS[name];
+    const raw = readString(formData, name);
+    if (!raw) return fallback;
+    const value = Number(raw);
+    const { min, max } = REMINDER_LIMITS[name];
+    if (!Number.isInteger(value) || value < min || value > max) {
+      if (active) fieldErrors[name] = `Enter a whole number from ${min} to ${max}.`;
+      return fallback;
+    }
+    return value;
+  };
+  return {
+    settings: {
+      remindersEnabled,
+      reminderStartDays: num("reminderStartDays", remindersEnabled),
+      reminderEveryDays: num("reminderEveryDays", remindersEnabled),
+      overdueRemindersEnabled,
+      overdueEveryDays: num("overdueEveryDays", overdueRemindersEnabled),
+      overdueForDays: num("overdueForDays", overdueRemindersEnabled),
+    },
+    fieldErrors,
+  };
+}
+
+/**
+ * Sets the deadline reminders for a whole reporting request (template +
+ * period), for the startups in the caller's department. Nothing is sent
+ * from here; the daily job follows the new settings from its next run.
+ */
+export async function setRequestRemindersAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  let departments: Department[] | null = null;
+  try {
+    ({ user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+
+  const templateId = readString(formData, "templateId");
+  const periodStartRaw = readString(formData, "periodStart");
+  const periodEndRaw = readString(formData, "periodEnd");
+  if (!templateId || !isDateInput(periodStartRaw) || !isDateInput(periodEndRaw)) return { error: GENERIC_ERROR };
+  const { settings, fieldErrors } = readReminderSettings(formData);
+  if (Object.keys(fieldErrors).length > 0) return { error: FIX_HIGHLIGHTED, fieldErrors };
+
+  try {
+    await db.$transaction(async (tx) => {
+      const cycles = await tx.reportingCycle.findMany({
+        where: {
+          templateId,
+          periodStart: new Date(periodStartRaw!),
+          periodEnd: new Date(periodEndRaw!),
+          company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
+        },
+        select: { id: true },
+      });
+      if (cycles.length === 0) throw new Error("no cycles");
+      await tx.reportingCycle.updateMany({ where: { id: { in: cycles.map((c) => c.id) } }, data: settings });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "reporting_request.reminders_set",
+        targetType: "ReportingTemplate",
+        targetId: templateId,
+        meta: { periodStart: periodStartRaw, periodEnd: periodEndRaw, ...settings, cycleIds: cycles.map((c) => c.id) },
+      });
+    });
+  } catch {
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
 /**
  * Turns the financial statements ask on or off for a whole reporting
  * request (template + period), or changes its year -- for the startups in

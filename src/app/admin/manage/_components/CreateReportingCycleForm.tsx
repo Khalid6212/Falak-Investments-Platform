@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/format";
 import { createReportingCycleAction } from "../../actions";
 import { ResendRequestButton } from "./ResendRequestButton";
+import { ReminderSettingsFields } from "./ReminderSettingsFields";
+import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reporting/reminder-schedule";
 import { useListView, byText, byValue } from "@/components/lists/useListView";
 import { labelClass, fieldClass, initialActionState, FormMessage } from "./shared";
 import type { AdminCompanyDTO, AdminReportingTemplateDTO } from "@/lib/admin/dto";
@@ -179,6 +181,21 @@ export function CreateReportingCycleForm({
                 {errorFor("statementsYear")}
               </div>
             ) : null}
+          </div>
+        )}
+        {addingTo ? (
+          <>
+            {addingTo.reminders.remindersEnabled ? <input type="hidden" name="remindersEnabled" value="on" /> : null}
+            {addingTo.reminders.overdueRemindersEnabled ? <input type="hidden" name="overdueRemindersEnabled" value="on" /> : null}
+            <input type="hidden" name="reminderStartDays" value={addingTo.reminders.reminderStartDays} />
+            <input type="hidden" name="reminderEveryDays" value={addingTo.reminders.reminderEveryDays} />
+            <input type="hidden" name="overdueEveryDays" value={addingTo.reminders.overdueEveryDays} />
+            <input type="hidden" name="overdueForDays" value={addingTo.reminders.overdueForDays} />
+            <p className="text-sm text-muted-foreground sm:col-span-2">{t.admin.manage.remindersInheritedNote}</p>
+          </>
+        ) : (
+          <div className="sm:col-span-2">
+            <ReminderSettingsFields initial={DEFAULT_REMINDER_SETTINGS} errorFor={errorFor} />
           </div>
         )}
         <div className="sm:col-span-2">

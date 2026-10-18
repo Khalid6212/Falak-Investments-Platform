@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import type { SubmissionStatus } from "@/generated/prisma/client";
+import type { ReminderSettings } from "@/lib/reporting/reminder-schedule";
 
 export interface RequestEmailDTO {
   id: string;
@@ -39,6 +40,8 @@ export interface ReportingRequestDetail {
   fieldCount: number;
   /** Financial statements year asked for, or null when not asked. */
   statementsYear: number | null;
+  /** Deadline reminders for the request (as set on its first startup). */
+  reminders: ReminderSettings;
   rows: RequestStartupRow[];
   /** False when the email log couldn't be read (rows then show no emails). */
   emailLogAvailable: boolean;
@@ -76,6 +79,12 @@ export async function getReportingRequestDetail(
       openedAt: true,
       currentDeadline: true,
       statementsYear: true,
+      remindersEnabled: true,
+      reminderStartDays: true,
+      reminderEveryDays: true,
+      overdueRemindersEnabled: true,
+      overdueEveryDays: true,
+      overdueForDays: true,
       template: { select: { nameEn: true, nameAr: true, _count: { select: { metrics: { where: { isActive: true } } } } } },
       company: { select: { id: true, slug: true, nameEn: true, nameAr: true } },
       submission: {
@@ -130,6 +139,14 @@ export async function getReportingRequestDetail(
     periodEnd: toDateOnly(end),
     fieldCount: first.template._count.metrics,
     statementsYear: cycles.find((c) => c.statementsYear !== null)?.statementsYear ?? null,
+    reminders: {
+      remindersEnabled: first.remindersEnabled,
+      reminderStartDays: first.reminderStartDays,
+      reminderEveryDays: first.reminderEveryDays,
+      overdueRemindersEnabled: first.overdueRemindersEnabled,
+      overdueEveryDays: first.overdueEveryDays,
+      overdueForDays: first.overdueForDays,
+    },
     emailLogAvailable,
     rows: cycles.map((c) => {
       const own = emails.filter((e) => e.cycleId === c.id);

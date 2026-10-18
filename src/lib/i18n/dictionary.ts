@@ -390,6 +390,16 @@ export interface Dictionary {
       statementsYearPlaceholder: string;
       statementsAskedNote: string;
       statementsAskHint: string;
+      remindersTitle: string;
+      remindersEnabledLabel: string;
+      reminderStartDaysLabel: string;
+      reminderEveryDaysLabel: string;
+      overdueRemindersLabel: string;
+      overdueEveryDaysLabel: string;
+      overdueForDaysLabel: string;
+      remindersOffNote: string;
+      remindersHint: string;
+      remindersInheritedNote: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1203,6 +1213,16 @@ export const en = {
       statementsYearPlaceholder: "Blank = year before the period ends",
       statementsAskedNote: "This request asks for the {year} financial statements; added startups are asked too.",
       statementsAskHint: "Applies to every startup in this request: their form shows the upload box, and the next emails ask for these statements.",
+      remindersTitle: "Deadline reminders",
+      remindersEnabledLabel: "Send reminders to the startup",
+      reminderStartDaysLabel: "Start {n} days before the deadline",
+      reminderEveryDaysLabel: "Repeat every {n} days",
+      overdueRemindersLabel: "Keep reminding after the deadline",
+      overdueEveryDaysLabel: "Every {n} days",
+      overdueForDaysLabel: "For {n} days after the deadline",
+      remindersOffNote: "No reminders will be sent.",
+      remindersHint: "Applies to every startup in this request that hasn't submitted. Reminders go out at 11:00 Riyadh time, at most one per startup per day.",
+      remindersInheritedNote: "Added startups get this request's reminder settings; change them on the request's page.",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2022,6 +2042,16 @@ export const ar = {
       statementsYearPlaceholder: "فارغ = السنة السابقة لنهاية الفترة",
       statementsAskedNote: "يطلب هذا الطلب القوائم المالية لعام {year}، وستُطلب أيضاً من الشركات المضافة.",
       statementsAskHint: "ينطبق على جميع الشركات في هذا الطلب: يظهر في نموذجها خانة الرفع، وتطلب الرسائل القادمة هذه القوائم.",
+      remindersTitle: "تذكيرات الموعد النهائي",
+      remindersEnabledLabel: "إرسال تذكيرات للشركة",
+      reminderStartDaysLabel: "البدء قبل الموعد النهائي بـ {n} يوم",
+      reminderEveryDaysLabel: "التكرار كل {n} يوم",
+      overdueRemindersLabel: "مواصلة التذكير بعد الموعد النهائي",
+      overdueEveryDaysLabel: "كل {n} يوم",
+      overdueForDaysLabel: "لمدة {n} يوم بعد الموعد النهائي",
+      remindersOffNote: "لن تُرسل أي تذكيرات.",
+      remindersHint: "ينطبق على جميع الشركات في هذا الطلب التي لم ترسل تقريرها. تُرسل التذكيرات الساعة 11:00 بتوقيت الرياض، بحد أقصى تذكير واحد لكل شركة يومياً.",
+      remindersInheritedNote: "تحصل الشركات المضافة على إعدادات التذكير لهذا الطلب، ويمكن تغييرها من صفحة الطلب.",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",
