@@ -74,7 +74,6 @@ export function MetricField({
           id={inputName}
           name={inputName}
           type="text"
-          inputMode="decimal"
           defaultValue={field.value ?? ""}
           disabled={field.isNa}
         />

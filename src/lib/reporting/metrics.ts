@@ -75,9 +75,9 @@ const MAX_RAW_VALUE_LENGTH = 4000;
 export const FIX_FIELDS_ERROR = "Fix the highlighted fields and try again. Nothing was saved.";
 
 const INVALID_MESSAGE: Record<MetricDataType, string> = {
-  Currency: "Enter a number, e.g. 250,000 or 1250.50.",
-  Number: "Enter a number, e.g. 1,200.",
-  Percent: "Enter a percentage, e.g. 12.5.",
+  Currency: "Enter a number, e.g. 250,000, 1250.50 or -40,000 (negative).",
+  Number: "Enter a number, e.g. 1,200 or -15.",
+  Percent: "Enter a percentage, e.g. 12.5 or -3.",
   Boolean: "Choose Yes or No.",
   Text: `Up to ${MAX_RAW_VALUE_LENGTH} characters.`,
 };
@@ -255,6 +255,49 @@ export async function adminUpdateSubmissionMetricValues(
   return { error: null, success: true };
 }
 
+const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const EXTENDED_ARABIC_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+
+/**
+ * A typed or pasted number as a plain decimal string ("-1250000.5"), or
+ * null if it isn't one. Accepts thousands separators and spaces, "12.5%",
+ * a currency sign or code (SAR, SR, USD, $, ﷼, ر.س), Arabic-Indic digits,
+ * and negatives written any common way: -40,000, −40,000 (typographic
+ * minus or dash, as pasted from Excel/Word/PDF), (40,000) accounting
+ * style, or a trailing minus 40,000-.
+ */
+export function normaliseNumber(raw: string): string | null {
+  let s = raw
+    .replace(/[٠-٩]/g, (d) => String(ARABIC_DIGITS.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String(EXTENDED_ARABIC_DIGITS.indexOf(d)))
+    .replace(/٫/g, ".")
+    .replace(/[٬,\s  ']/g, "")
+    .replace(/[−‒–—﹣－]/g, "-")
+    .replace(/(SAR|SR|USD|US\$|\$|﷼|ر\.?س\.?)/gi, "")
+    .replace(/%$/, "");
+  let negative = false;
+  if (/^\(.*\)$/.test(s)) {
+    negative = true;
+    s = s.slice(1, -1);
+  }
+  if (s.endsWith("-")) {
+    negative = !negative;
+    s = s.slice(0, -1);
+  }
+  if (s.startsWith("-")) {
+    negative = !negative;
+    s = s.slice(1);
+  } else if (s.startsWith("+")) {
+    s = s.slice(1);
+  }
+  if (!/^(\d+(\.\d+)?|\.\d+)$/.test(s)) return null;
+  if (s.startsWith(".")) s = "0" + s;
+  // Fits the column (Decimal(18, 4)): at most 14 digits before the point.
+  if (s.split(".")[0].replace(/^0+(?=\d)/, "").length > 14) return null;
+  const isZero = /^0+(\.0+)?$/.test(s);
+  return negative && !isZero ? "-" + s : s;
+}
+
 interface StoredValueData {
   numericValue: string | null;
   textValue: string | null;
@@ -275,9 +318,8 @@ function toStoredValue(field: MetricValueInput, dataType: MetricDataType): Store
     case "Currency":
     case "Percent":
     case "Number": {
-      // Accept "1,250,000", "1 250 000" and (for percentages) "12.5%".
-      const normalised = trimmed.replace(/[,\s]/g, "").replace(/%$/, "");
-      if (!/^-?\d+(\.\d+)?$/.test(normalised)) return "invalid";
+      const normalised = normaliseNumber(trimmed);
+      if (normalised === null) return "invalid";
       return { numericValue: normalised, textValue: null, isNa: false };
     }
     case "Boolean": {

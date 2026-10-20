@@ -73,7 +73,7 @@ function MetricField({
           <option value="No">No</option>
         </Select>
       ) : (
-        <Input id={inputName} name={inputName} type="text" inputMode="decimal" defaultValue={field.value ?? ""} disabled={field.isNa} />
+        <Input id={inputName} name={inputName} type="text" defaultValue={field.value ?? ""} disabled={field.isNa} />
       )}
       <label className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground">
         <input type="checkbox" name={naName} defaultChecked={field.isNa} />
