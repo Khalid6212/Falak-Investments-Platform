@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { sendChangesRequestedEmail, sendReportRequestEmail } from "@/lib/email/send-email";
 import { longDate, periodPhrase } from "@/lib/email/report-wording";
 import { errorMessage, logRequestEmails, type RequestEmailLogEntry } from "@/lib/reporting/request-email-log";
-import { RECIPIENT_SELECT, createFormLink, formLinkUrl, investmentProfessionalCc, startupRecipients } from "@/lib/reporting/form-link";
+import { RECIPIENT_SELECT, createFormLink, formLinkUrl, reportEmailCc, startupRecipients } from "@/lib/reporting/form-link";
 
 export interface ReportRequestNotifyResult {
   emailed: string[];
@@ -63,8 +63,8 @@ export async function notifyReportRequest(
       result.noContact.push(company.nameEn);
       continue;
     }
-    // The startup's investment professionals are copied once, on the first email.
-    let cc = await investmentProfessionalCc(company.department, recipients);
+    // Cc contacts and investment professionals are copied once, on the first email.
+    let cc = await reportEmailCc(company, recipients);
     let anySent = false;
     for (const to of recipients) {
       try {
@@ -117,7 +117,7 @@ export async function notifyChangesRequested(submissionId: string, comment: stri
     if (!submission) return false;
     const { cycle } = submission;
     const recipients = startupRecipients(cycle.company);
-    let cc = await investmentProfessionalCc(cycle.company.department, recipients);
+    let cc = await reportEmailCc(cycle.company, recipients);
     for (const to of recipients) {
       try {
         const token = await createFormLink(db, cycle.id, to);

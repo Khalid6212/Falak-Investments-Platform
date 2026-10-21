@@ -400,6 +400,22 @@ export interface Dictionary {
       remindersOffNote: string;
       remindersHint: string;
       remindersInheritedNote: string;
+      contactsTitle: string;
+      contactsHint: string;
+      contactNameLabel: string;
+      contactRoleLabel: string;
+      contactRolePlaceholder: string;
+      contactEmailLabel: string;
+      contactDeliveryLabel: string;
+      contactDeliveryTo: string;
+      contactDeliveryCc: string;
+      contactDeliveryNone: string;
+      contactRemovePendingNote: string;
+      contactRemoveAction: string;
+      contactAddAction: string;
+      contactsEmpty: string;
+      noRecipientsNote: string;
+      editContactsAction: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1223,6 +1239,22 @@ export const en = {
       remindersOffNote: "No reminders will be sent.",
       remindersHint: "Applies to every startup in this request that hasn't submitted. Reminders go out at 11:00 Riyadh time, at most one per startup per day.",
       remindersInheritedNote: "Added startups get this request's reminder settings; change them on the request's page.",
+      contactsTitle: "Report contacts",
+      contactsHint: "Who this startup's report emails go to: requests, reminders and change requests. \"To\" contacts each get their own link to the form; \"Cc\" contacts get a copy. The department's investment professionals are always copied. Changes apply to the next email sent.",
+      contactNameLabel: "Name",
+      contactRoleLabel: "Role",
+      contactRolePlaceholder: "e.g. CEO, CFO",
+      contactEmailLabel: "Email",
+      contactDeliveryLabel: "Receives",
+      contactDeliveryTo: "To",
+      contactDeliveryCc: "Cc",
+      contactDeliveryNone: "Don't email",
+      contactRemovePendingNote: "{name} will be removed when you save.",
+      contactRemoveAction: "Remove contact",
+      contactAddAction: "Add contact",
+      contactsEmpty: "No contacts yet. Until one is added, emails go to the founder email on the startup's details.",
+      noRecipientsNote: "No one to email. Add a contact set to To.",
+      editContactsAction: "Edit contacts",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2052,6 +2084,22 @@ export const ar = {
       remindersOffNote: "لن تُرسل أي تذكيرات.",
       remindersHint: "ينطبق على جميع الشركات في هذا الطلب التي لم ترسل تقريرها. تُرسل التذكيرات الساعة 11:00 بتوقيت الرياض، بحد أقصى تذكير واحد لكل شركة يومياً.",
       remindersInheritedNote: "تحصل الشركات المضافة على إعدادات التذكير لهذا الطلب، ويمكن تغييرها من صفحة الطلب.",
+      contactsTitle: "جهات اتصال التقارير",
+      contactsHint: "من تُرسل إليهم رسائل التقارير لهذه الشركة: الطلبات والتذكيرات وطلبات التعديل. يحصل كل من في \"إلى\" على رابط خاص للنموذج، ويحصل من في \"نسخة\" على نسخة من الرسالة. يُنسخ دائماً مختصو الاستثمار في القسم. تُطبق التغييرات على الرسالة التالية.",
+      contactNameLabel: "الاسم",
+      contactRoleLabel: "المنصب",
+      contactRolePlaceholder: "مثلاً: الرئيس التنفيذي، المدير المالي",
+      contactEmailLabel: "البريد الإلكتروني",
+      contactDeliveryLabel: "يستلم",
+      contactDeliveryTo: "إلى",
+      contactDeliveryCc: "نسخة",
+      contactDeliveryNone: "لا يُرسل إليه",
+      contactRemovePendingNote: "سيُحذف {name} عند الحفظ.",
+      contactRemoveAction: "حذف جهة الاتصال",
+      contactAddAction: "إضافة جهة اتصال",
+      contactsEmpty: "لا توجد جهات اتصال بعد. حتى تتم إضافة جهة، تُرسل الرسائل إلى بريد المؤسس في بيانات الشركة.",
+      noRecipientsNote: "لا يوجد من يُرسل إليه. أضف جهة اتصال في \"إلى\".",
+      editContactsAction: "تعديل جهات الاتصال",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",

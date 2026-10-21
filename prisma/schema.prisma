@@ -272,6 +272,7 @@ model Company {
   investorExposures  InvestorStartupExposure[]
   invites            CompanyInvite[]
   memberships        CompanyMembership[]
+  contacts           StartupContact[]
   cycles             ReportingCycle[]
   reports            Report[]
   valuations         CompanyValuationSnapshot[]
@@ -299,6 +300,34 @@ model CompanyInvite {
 enum CompanyMembershipRole {
   ADMIN
   MEMBER
+}
+
+
+enum ContactDelivery {
+  TO
+  CC
+  NONE
+}
+
+// People at a startup who receive its report emails (requests, reminders,
+// change requests), kept by Falak staff and editable at any time. Each TO
+// contact gets their own form link; CC contacts are copied. Removing a
+// contact sets deletedAt (the runtime role has no DELETE).
+model StartupContact {
+  id        String          @id @default(cuid())
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  companyId String
+  name      String
+  email     String
+  role      String?
+  delivery  ContactDelivery @default(TO)
+  sortOrder Int             @default(0)
+  deletedAt DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([companyId])
+  @@map("startup_contacts")
 }
 
 model CompanyMembership {

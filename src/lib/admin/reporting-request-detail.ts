@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import type { SubmissionStatus } from "@/generated/prisma/client";
 import type { ReminderSettings } from "@/lib/reporting/reminder-schedule";
+import { RECIPIENT_SELECT, startupCc, startupRecipients } from "@/lib/reporting/form-link";
 
 export interface RequestEmailDTO {
   id: string;
@@ -26,6 +27,9 @@ export interface RequestStartupRow {
   submissionStatus: SubmissionStatus | null;
   /** How many of the template's fields have a value (or N/A). */
   answeredCount: number;
+  /** Who the startup's report emails go to now (To) and who is copied (Cc), from its contacts. */
+  emailTo: string[];
+  emailCc: string[];
   lastEmailedAt: string | null;
   emails: RequestEmailDTO[];
 }
@@ -86,7 +90,7 @@ export async function getReportingRequestDetail(
       overdueEveryDays: true,
       overdueForDays: true,
       template: { select: { nameEn: true, nameAr: true, _count: { select: { metrics: { where: { isActive: true } } } } } },
-      company: { select: { id: true, slug: true, nameEn: true, nameAr: true } },
+      company: { select: { id: true, slug: true, nameEn: true, nameAr: true, ...RECIPIENT_SELECT } },
       submission: {
         select: {
           status: true,
@@ -161,6 +165,8 @@ export async function getReportingRequestDetail(
         currentDeadline: toDateOnly(c.currentDeadline),
         submissionStatus: c.submission?.status ?? null,
         answeredCount: c.submission?._count.metricValues ?? 0,
+        emailTo: startupRecipients(c.company),
+        emailCc: startupCc(c.company, startupRecipients(c.company)),
         lastEmailedAt: own.find((e) => e.status === "sent")?.sentAt.toISOString() ?? null,
         emails: own.map((e) => ({
           id: e.id,

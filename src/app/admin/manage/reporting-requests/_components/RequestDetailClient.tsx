@@ -53,6 +53,13 @@ function StartupRow({ row, fieldCount }: { row: RequestStartupRow; fieldCount: n
           <Link href={`/company/${row.companySlug}`} className="text-link-foreground underline-offset-2 hover:underline">
             {lang === "ar" ? row.companyNameAr : row.companyNameEn}
           </Link>
+          <p className="mt-0.5 max-w-[16rem] break-all text-xs font-normal text-muted-foreground">
+            {row.emailTo.length > 0 ? `${m.contactDeliveryTo}: ${row.emailTo.join(", ")}` : <span className="text-danger">{m.noRecipientsNote}</span>}
+            {row.emailCc.length > 0 ? ` · ${m.contactDeliveryCc}: ${row.emailCc.join(", ")}` : ""}
+          </p>
+          <Link href={`/admin/manage/edit-company/${row.companyId}`} className="text-xs font-normal text-link-foreground hover:underline">
+            {m.editContactsAction}
+          </Link>
         </Td>
         <Td className="whitespace-nowrap">{row.periodLabel}</Td>
         <Td>

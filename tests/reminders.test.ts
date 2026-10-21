@@ -238,3 +238,34 @@ test("the startup's investment professionals are copied once, never their other 
   assert.deepEqual(upcoming[0].cc, ["ip@falak.sa"]);
   assert.deepEqual(upcoming[1].cc, []);
 });
+
+test("reminders follow the startup's contacts: To get the email, Cc contacts and IPs are copied once", async () => {
+  const upcoming = setSendDeadlineReminderEmailSpy();
+  setDbStub(
+    makeRemindersDbStub(
+      [
+        {
+          id: "cy_1",
+          periodLabel: "Q2 2026",
+          currentDeadline: new Date("2026-06-18T00:00:00Z"),
+          companySlug: "acme",
+          companyNameEn: "Acme",
+          memberEmails: ["old-user@acme.com"],
+          founderEmail: "old-founder@acme.com",
+          contacts: [
+            { email: "ceo@acme.com", delivery: "TO" },
+            { email: "cfo@acme.com", delivery: "TO" },
+            { email: "board@acme.com", delivery: "CC" },
+            { email: "intern@acme.com", delivery: "NONE" },
+          ],
+          submissionStatus: "draft",
+        },
+      ],
+      [{ email: "ip@falak.sa", department: "InvestmentDepartment" }]
+    )
+  );
+  await sendDueReminders(NOW);
+  assert.deepEqual(upcoming.map((e) => e.to), ["ceo@acme.com", "cfo@acme.com"]);
+  assert.deepEqual(upcoming[0].cc, ["board@acme.com", "ip@falak.sa"]);
+  assert.deepEqual(upcoming[1].cc, []);
+});

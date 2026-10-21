@@ -26,6 +26,7 @@ import { convertToDisplay, type DisplayCurrency } from "@/lib/currency/convert";
 import { requestSignInLink } from "@/lib/auth/request-sign-in";
 import { hashPassword, MIN_PASSWORD_LENGTH, MAX_RAW_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { NUMERIC_DATA_TYPES, SYSTEM_METRIC_KEYS } from "@/lib/reporting/system-metric-keys";
+import { saveStartupContacts } from "@/lib/admin/startup-contacts";
 import { DEFAULT_REMINDER_SETTINGS, REMINDER_LIMITS, type ReminderSettings } from "@/lib/reporting/reminder-schedule";
 import type {
   Currency,
@@ -2223,4 +2224,14 @@ export async function updateReportingTemplateAction(_prevState: ActionState, for
   }
 
   return { error: null, success: true };
+}
+
+/** Saves a startup's report contacts (who its report emails go to, To or Cc). */
+export async function saveStartupContactsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    return await saveStartupContacts(formData);
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
 }

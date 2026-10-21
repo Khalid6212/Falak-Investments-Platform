@@ -1534,6 +1534,8 @@ export interface ReminderCycleFixture {
   founderEmail?: string | null;
   submissionStatus: string | null;
   lastReminderKind?: string | null;
+  /** Report contacts; when set they decide To/Cc instead of members/founder. */
+  contacts?: { email: string; delivery: "TO" | "CC" | "NONE" }[];
   /** Defaults: on, daily from 7 days out, daily overdue for 14 days. */
   reminders?: Partial<{
     remindersEnabled: boolean;
@@ -1603,6 +1605,7 @@ export function makeRemindersDbStub(cycles: ReminderCycleFixture[], investmentPr
               nameEn: c.companyNameEn,
               founderEmail: c.founderEmail ?? null,
               department: "InvestmentDepartment",
+              contacts: c.contacts ?? [],
               memberships: c.memberEmails.map((email) => ({ user: { email } })),
             },
           })),

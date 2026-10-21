@@ -38,14 +38,32 @@ export function formLinkUrl(baseUrl: string, rawToken: string): string {
   return `${baseUrl}/r/${rawToken}`;
 }
 
-/** Everyone a startup's report emails go to: its active users plus its founder email. */
-export function startupRecipients(company: {
+interface RecipientSource {
   founderEmail: string | null;
   memberships: { user: { email: string } }[];
-}): string[] {
+  contacts?: { email: string; delivery: "TO" | "CC" | "NONE" }[];
+}
+
+/**
+ * Who a startup's report emails go to ("To"; each gets their own link):
+ * its report contacts set to To. A startup with no contacts at all (e.g.
+ * just added) falls back to its active users plus its founder email.
+ */
+export function startupRecipients(company: RecipientSource): string[] {
+  if (company.contacts && company.contacts.length > 0) {
+    return [...new Set(company.contacts.filter((c) => c.delivery === "TO").map((c) => normalizeEmail(c.email)))];
+  }
   const emails = company.memberships.map((m) => normalizeEmail(m.user.email));
   if (company.founderEmail) emails.push(normalizeEmail(company.founderEmail));
   return [...new Set(emails)];
+}
+
+/** The startup's report contacts set to Cc, leaving out anyone already a recipient. */
+export function startupCc(company: RecipientSource, recipients: string[]): string[] {
+  const skip = new Set(recipients);
+  return [...new Set((company.contacts ?? []).filter((c) => c.delivery === "CC").map((c) => normalizeEmail(c.email)))].filter(
+    (e) => !skip.has(e)
+  );
 }
 
 /** Select for the people a startup's report emails go to. */
@@ -56,7 +74,22 @@ export const RECIPIENT_SELECT = {
     where: { revokedAt: null, user: { deactivatedAt: null } },
     select: { user: { select: { email: true } } },
   },
+  contacts: {
+    where: { deletedAt: null },
+    orderBy: { sortOrder: "asc" },
+    select: { email: true, delivery: true },
+  },
 } as const;
+
+/**
+ * Everyone copied on a startup's report email: its Cc contacts, then the
+ * Investment Professionals in its department. Never anyone in To.
+ */
+export async function reportEmailCc(company: RecipientSource & { department: Department }, recipients: string[]): Promise<string[]> {
+  const contacts = startupCc(company, recipients);
+  const professionals = await investmentProfessionalCc(company.department, [...recipients, ...contacts]);
+  return [...contacts, ...professionals];
+}
 
 /**
  * Investment Professionals (FALAK_OPERATIONS) in the startup's department,
