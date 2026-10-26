@@ -5,6 +5,7 @@ import { getReportingRequestGroups } from "@/lib/admin/reporting-request-groups"
 import { ForbiddenError, UnauthenticatedError } from "@/lib/auth/authorization-errors";
 import { ManageSubsectionShell } from "../_components/ManageSubsectionShell";
 import { CreateReportingCycleForm } from "../_components/CreateReportingCycleForm";
+import { ReportImportPanel } from "../_components/ReportImportPanel";
 
 export default async function NewReportingCyclePage() {
   const currentUser = await getCurrentUser();
@@ -25,7 +26,10 @@ export default async function NewReportingCyclePage() {
 
   return (
     <ManageSubsectionShell titleKey="createCycleTitle">
-      <CreateReportingCycleForm companies={data.companies} templates={data.templates} groups={groups} />
+      <div className="flex flex-col gap-6">
+        <ReportImportPanel templates={data.templates} />
+        <CreateReportingCycleForm companies={data.companies} templates={data.templates} groups={groups} />
+      </div>
     </ManageSubsectionShell>
   );
 }

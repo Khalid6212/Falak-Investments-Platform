@@ -416,6 +416,19 @@ export interface Dictionary {
       contactsEmpty: string;
       noRecipientsNote: string;
       editContactsAction: string;
+      reportImportAction: string;
+      reportImportTitle: string;
+      reportImportIntro: string;
+      reportImportTemplateAction: string;
+      reportImportRunAction: string;
+      reportImportNewLabel: string;
+      reportImportFillLabel: string;
+      reportImportDoneLabel: string;
+      reportImportFailedLabel: string;
+      reportImportAnsweredLabel: string;
+      reportImportMissingLabel: string;
+      reportImportCountsMessage: string;
+      reportImportIgnoredColumns: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1255,6 +1268,19 @@ export const en = {
       contactsEmpty: "No contacts yet. Until one is added, emails go to the founder email on the startup's details.",
       noRecipientsNote: "No one to email. Add a contact set to To.",
       editContactsAction: "Edit contacts",
+      reportImportAction: "Import past reports from Excel",
+      reportImportTitle: "Import reports from Excel",
+      reportImportIntro: "For reports gathered before the platform or collected by hand. Choose the reporting template, download its file and fill in one row per startup per period (e.g. Q3 2025). Each row is added as a submitted report for that startup and period, waiting for review; once approved and published its figures appear everywhere, like any other report.",
+      reportImportTemplateAction: "Download this template's Excel file",
+      reportImportRunAction: "Import {count} report(s)",
+      reportImportNewLabel: "Ready: new report for review",
+      reportImportFillLabel: "Ready: fills in the unsent report for this period",
+      reportImportDoneLabel: "Imported: submitted for review",
+      reportImportFailedLabel: "Not imported (changed meanwhile); check the file again",
+      reportImportAnsweredLabel: "{answered} of {total} figures filled in",
+      reportImportMissingLabel: "Required but empty (the reviewer can fill in): {fields}",
+      reportImportCountsMessage: "{count} report(s) imported and waiting for review in Reports Review and Approval.",
+      reportImportIgnoredColumns: "Columns not recognised and ignored: {columns}",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2100,6 +2126,19 @@ export const ar = {
       contactsEmpty: "لا توجد جهات اتصال بعد. حتى تتم إضافة جهة، تُرسل الرسائل إلى بريد المؤسس في بيانات الشركة.",
       noRecipientsNote: "لا يوجد من يُرسل إليه. أضف جهة اتصال في \"إلى\".",
       editContactsAction: "تعديل جهات الاتصال",
+      reportImportAction: "استيراد تقارير سابقة من Excel",
+      reportImportTitle: "استيراد التقارير من Excel",
+      reportImportIntro: "للتقارير التي جُمعت قبل المنصة أو يدوياً. اختر نموذج التقرير، ونزّل ملفه، وأدخل صفاً لكل شركة لكل فترة (مثلاً Q3 2025). يُضاف كل صف كتقرير مُرسل لتلك الشركة والفترة بانتظار المراجعة، وبعد اعتماده ونشره تظهر أرقامه في كل مكان مثل أي تقرير آخر.",
+      reportImportTemplateAction: "تنزيل ملف Excel لهذا النموذج",
+      reportImportRunAction: "استيراد {count} تقرير",
+      reportImportNewLabel: "جاهز: تقرير جديد للمراجعة",
+      reportImportFillLabel: "جاهز: يُكمل التقرير غير المرسل لهذه الفترة",
+      reportImportDoneLabel: "تم الاستيراد: مُرسل للمراجعة",
+      reportImportFailedLabel: "لم يُستورد (تغيّر في الأثناء)؛ افحص الملف مرة أخرى",
+      reportImportAnsweredLabel: "تم إدخال {answered} من {total} رقماً",
+      reportImportMissingLabel: "مطلوبة لكنها فارغة (يمكن للمراجع إكمالها): {fields}",
+      reportImportCountsMessage: "تم استيراد {count} تقرير، وهي بانتظار المراجعة في صفحة مراجعة التقارير واعتمادها.",
+      reportImportIgnoredColumns: "أعمدة غير معروفة تم تجاهلها: {columns}",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",
