@@ -431,6 +431,8 @@ export interface Dictionary {
       reportImportIgnoredColumns: string;
       sendRequestEmailLabel: string;
       sendRequestEmailHint: string;
+      reportImportCheckedNote: string;
+      reportImportCheckedNoneNote: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1285,6 +1287,8 @@ export const en = {
       reportImportIgnoredColumns: "Columns not recognised and ignored: {columns}",
       sendRequestEmailLabel: "Email the request to the startup now",
       sendRequestEmailHint: "Untick to create the cycle without emailing anyone, e.g. when you already have the figures and will enter them with Manual add. You can send it later with Resend.",
+      reportImportCheckedNote: "Checked only: nothing has been imported yet. {ready} of {total} rows are ready. Click \"Import {ready} report(s)\" to add them.",
+      reportImportCheckedNoneNote: "Checked only: nothing has been imported. None of the {total} rows can be imported yet; fix the problems below and check the file again.",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2145,6 +2149,8 @@ export const ar = {
       reportImportIgnoredColumns: "أعمدة غير معروفة تم تجاهلها: {columns}",
       sendRequestEmailLabel: "إرسال الطلب إلى الشركة بالبريد الآن",
       sendRequestEmailHint: "أزل التحديد لإنشاء الدورة دون مراسلة أحد، مثلاً عندما تتوفر الأرقام لديك وستدخلها عبر الإضافة اليدوية. يمكنك إرساله لاحقاً عبر إعادة الإرسال.",
+      reportImportCheckedNote: "تم الفحص فقط: لم يُستورد شيء بعد. {ready} من {total} صفاً جاهزة. اضغط \"استيراد\" لإضافتها.",
+      reportImportCheckedNoneNote: "تم الفحص فقط: لم يُستورد شيء. لا يمكن استيراد أي من الصفوف الـ {total} بعد؛ أصلح المشكلات أدناه وافحص الملف مرة أخرى.",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",

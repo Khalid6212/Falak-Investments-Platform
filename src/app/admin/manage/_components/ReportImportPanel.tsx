@@ -140,8 +140,11 @@ export function ReportImportPanel({ templates }: { templates: AdminReportingTemp
             {m.reportImportCountsMessage.replace("{count}", String(state.importedCount ?? 0))}
           </p>
         ) : state.mode === "preview" && rows.length > 0 ? (
-          <p role="status" className="text-xs text-muted-foreground">
-            {m.importReadyCount.replace("{ready}", String(ready)).replace("{total}", String(rows.length))}
+          <p role="status" className="chamfer-br-sm bg-surface-muted px-3 py-2 text-sm font-semibold text-foreground">
+            {(ready > 0 ? m.reportImportCheckedNote : m.reportImportCheckedNoneNote)
+              .split("{ready}")
+              .join(String(ready))
+              .replace("{total}", String(rows.length))}
           </p>
         ) : null}
         {state.ignoredColumns && state.ignoredColumns.length > 0 ? (

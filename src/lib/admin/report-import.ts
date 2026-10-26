@@ -179,7 +179,8 @@ export interface ParsedReportImport {
   ignoredColumns?: string[];
 }
 
-const sameDay = (a: Date, b: Date) => a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
+const day = (d: Date) => d.toISOString().slice(0, 10);
+const sameDay = (a: Date, b: Date) => day(a) === day(b);
 const FILLABLE: (SubmissionStatus | null)[] = [null, "draft", "changes_requested"];
 const STATUS_WORDS: Partial<Record<SubmissionStatus, string>> = {
   submitted: "submitted",
@@ -316,7 +317,18 @@ export async function parseReportImport(
         problems.push(`Already has a report for this period that is ${STATUS_WORDS[mine.status!] ?? mine.status}; skipped.`);
       } else if (!mine && other) {
         problems.push(`Already has a report for this period under template "${other.templateNameEn}"; skipped.`);
-      } else if (problems.length === 0) {
+      } else if (!mine) {
+        // A cycle covering part of the same months under other dates (e.g. a
+        // Q2 entered as 1 Mar - 30 Jun) would otherwise get a second report
+        // for the same quarter.
+        const overlap = cycles.find((c) => c.companyId === company.id && c.periodStart <= periodEnd! && c.periodEnd >= periodStart!);
+        if (overlap) {
+          problems.push(
+            `Overlaps this startup's existing "${overlap.templateNameEn}" cycle for ${day(overlap.periodStart)} to ${day(overlap.periodEnd)}; skipped. Use the same dates as that cycle to fill it in, or correct its dates first.`
+          );
+        }
+      }
+      if (action === null && problems.length === 0) {
         action = mine ? "fill" : "new";
         existing = mine ? { cycleId: mine.cycleId, submissionId: mine.submissionId, status: mine.status } : null;
       }

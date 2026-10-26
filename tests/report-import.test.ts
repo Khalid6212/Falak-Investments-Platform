@@ -190,3 +190,14 @@ test("report import action: Check writes nothing; Import creates the cycle and a
   assert.ok(stub.getAuditEvents().some((e) => e.action === "submission.imported"));
   assert.deepEqual(result.rows?.map((r) => r.outcome), ["imported", undefined]);
 });
+
+test("report import: a period overlapping an existing cycle on other dates is flagged, not duplicated", async () => {
+  // e.g. Bookr's Q2 entered as 1 Mar - 30 Jun; importing "Q2 2026" (1 Apr - 30 Jun) must not add a second Q2.
+  const cycles = [{ companyId: "co_acme", templateId: "tpl_1", templateNameEn: "Quarterly", periodStart: d("2026-03-01"), periodEnd: d("2026-06-30"), cycleId: "cy_q2", submissionId: "s_q2", status: "draft" as const }];
+  const flagged = await parseReportImport(await filled([["Acme", "Q2 2026", null, null, null, 1, 2]]), TEMPLATE, COMPANIES, cycles);
+  assert.match(flagged.rows[0].problems.join(" "), /Overlaps .* 2026-03-01 to 2026-06-30/);
+  assert.equal(flagged.rows[0].action, null);
+  // Using that cycle's own dates fills it in instead.
+  const matched = await parseReportImport(await filled([["Acme", "Q2 2026", d("2026-03-01"), d("2026-06-30"), null, 1, 2]]), TEMPLATE, COMPANIES, cycles);
+  assert.equal(matched.rows[0].action, "fill");
+});
