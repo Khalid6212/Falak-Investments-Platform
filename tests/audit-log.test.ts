@@ -1029,3 +1029,44 @@ test("setRequestRemindersAction saves the settings on every cycle in the request
   assert.equal(updates[1].data.remindersEnabled, false);
   assert.ok(db.getAuditEvents().some((e) => e.action === "reporting_request.reminders_set"));
 });
+
+test("createReportingCycleAction: with 'Email the request now' unticked, the cycle is created and no email is sent", async () => {
+  const actions = await import("../src/app/admin/actions.ts");
+  setCurrentUser(REAL_USER);
+  const sent: unknown[] = [];
+  (globalThis as Record<string, unknown>).__TEST_SEND_REPORT_REQUEST_EMAIL_STUB__ = async (...args: unknown[]) => {
+    sent.push(args);
+  };
+  let created = 0;
+  const companyLookups: unknown[] = [];
+  setDbStub(
+    makeAdminActionDbStub({
+      falakRoles: ADMIN_ROLE,
+      models: {
+        reportingCycle: {
+          findUnique: async () => null,
+          create: async ({ data }: { data: Record<string, unknown> }) => ({ id: `cycle_${++created}`, ...data }),
+        },
+        companySubmission: { create: async ({ data }: { data: Record<string, unknown> }) => ({ id: "sub_new", ...data }) },
+        company: {
+          findMany: async (args: unknown) => {
+            companyLookups.push(args);
+            return [];
+          },
+        },
+      },
+    })
+  );
+  const formData = new FormData();
+  formData.append("companyIds", "co_1");
+  for (const [k, v] of Object.entries({ templateId: "tmpl_1", periodLabel: "Q2 2025", periodStart: "2025-04-01", periodEnd: "2025-06-30", deadline: "2025-07-31", emailChoice: "present" })) {
+    formData.set(k, v);
+  }
+  const result = await actions.createReportingCycleAction({ error: null }, formData);
+  assert.equal(result.error, null);
+  assert.equal(created, 1);
+  assert.match(result.notice ?? "", /without emailing/);
+  assert.equal(sent.length, 0);
+  assert.equal(companyLookups.length, 0, "the email step never ran");
+  delete (globalThis as Record<string, unknown>).__TEST_SEND_REPORT_REQUEST_EMAIL_STUB__;
+});

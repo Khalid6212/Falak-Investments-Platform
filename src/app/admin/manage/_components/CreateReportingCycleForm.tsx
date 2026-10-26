@@ -199,6 +199,16 @@ export function CreateReportingCycleForm({
           </div>
         )}
         <div className="sm:col-span-2">
+          <input type="hidden" name="emailChoice" value="present" />
+          <label className="inline-flex items-start gap-2 text-sm text-foreground">
+            <input type="checkbox" name="sendEmail" defaultChecked className="mt-1" />
+            <span>
+              {t.admin.manage.sendRequestEmailLabel}
+              <span className="block text-xs text-muted-foreground">{t.admin.manage.sendRequestEmailHint}</span>
+            </span>
+          </label>
+        </div>
+        <div className="sm:col-span-2">
           <FormMessage state={state} />
         </div>
         <div className="flex gap-2 sm:col-span-2">

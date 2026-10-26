@@ -1003,6 +1003,12 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
     return { error: message, fieldErrors: { companyIds: message } };
   }
 
+  // The form's "Email the request to the startup now" box: unticked creates
+  // the cycle silently (e.g. data already in hand, entered by staff). Callers
+  // without the box (no emailChoice field) keep emailing.
+  if (formData.get("emailChoice") === "present" && formData.get("sendEmail") !== "on") {
+    return { error: null, success: true, notice: "Created without emailing the startup. Use Resend on the request page to send it later." };
+  }
   // Outside the transaction: the requests exist regardless of email delivery.
   const notified = await notifyReportRequest(created, { periodLabel, deadline }, user.id);
   return { error: null, success: true, notice: describeNotifyResult(notified) };

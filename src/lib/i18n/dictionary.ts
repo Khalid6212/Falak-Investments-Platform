@@ -429,6 +429,8 @@ export interface Dictionary {
       reportImportMissingLabel: string;
       reportImportCountsMessage: string;
       reportImportIgnoredColumns: string;
+      sendRequestEmailLabel: string;
+      sendRequestEmailHint: string;
       editMetricAction: string;
       metricUnlockedNote: string;
       templateInactiveLabel: string;
@@ -1281,6 +1283,8 @@ export const en = {
       reportImportMissingLabel: "Required but empty (the reviewer can fill in): {fields}",
       reportImportCountsMessage: "{count} report(s) imported and waiting for review in Reports Review and Approval.",
       reportImportIgnoredColumns: "Columns not recognised and ignored: {columns}",
+      sendRequestEmailLabel: "Email the request to the startup now",
+      sendRequestEmailHint: "Untick to create the cycle without emailing anyone, e.g. when you already have the figures and will enter them with Manual add. You can send it later with Resend.",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
       templateInactiveLabel: "inactive",
@@ -2139,6 +2143,8 @@ export const ar = {
       reportImportMissingLabel: "مطلوبة لكنها فارغة (يمكن للمراجع إكمالها): {fields}",
       reportImportCountsMessage: "تم استيراد {count} تقرير، وهي بانتظار المراجعة في صفحة مراجعة التقارير واعتمادها.",
       reportImportIgnoredColumns: "أعمدة غير معروفة تم تجاهلها: {columns}",
+      sendRequestEmailLabel: "إرسال الطلب إلى الشركة بالبريد الآن",
+      sendRequestEmailHint: "أزل التحديد لإنشاء الدورة دون مراسلة أحد، مثلاً عندما تتوفر الأرقام لديك وستدخلها عبر الإضافة اليدوية. يمكنك إرساله لاحقاً عبر إعادة الإرسال.",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
       templateInactiveLabel: "غير نشط",
