@@ -201,3 +201,16 @@ test("report import: a period overlapping an existing cycle on other dates is fl
   const matched = await parseReportImport(await filled([["Acme", "Q2 2026", d("2026-03-01"), d("2026-06-30"), null, 1, 2]]), TEMPLATE, COMPANIES, cycles);
   assert.equal(matched.rows[0].action, "fill");
 });
+
+test("report import: a protected (labelled/password) file gets a message saying so, not 'upload .xlsx'", async () => {
+  // Encrypted Office files start with the compound-file signature D0 CF 11 E0.
+  const encrypted = new Uint8Array(512);
+  encrypted.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+  const parsed = await parseReportImport(encrypted.buffer, TEMPLATE, COMPANIES, []);
+  assert.match(parsed.error ?? "", /protected/);
+  assert.match(parsed.error ?? "", /Sensitivity/);
+
+  const notExcel = new TextEncoder().encode("Startup,Period\nAcme,Q3 2025\n");
+  const csv = await parseReportImport(notExcel.buffer as ArrayBuffer, TEMPLATE, COMPANIES, []);
+  assert.match(csv.error ?? "", /Save As > Excel Workbook/);
+});

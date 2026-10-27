@@ -1,5 +1,6 @@
 import "server-only";
 import ExcelJS from "exceljs";
+import { loadImportWorkbook } from "@/lib/admin/excel-load";
 import type { Department } from "@/generated/prisma/client";
 import { en, ar } from "@/lib/i18n/dictionary";
 import { INDUSTRIES } from "@/lib/industries";
@@ -275,12 +276,9 @@ export async function parseCompanyImport(
   scope: Department[] | null,
   existing: { companies: ExistingCompany[]; slugs: Set<string> }
 ): Promise<ParsedImport> {
-  const book = new ExcelJS.Workbook();
-  try {
-    await book.xlsx.load(file);
-  } catch {
-    return { error: "That file couldn't be read. Upload the .xlsx template filled in.", rows: [] };
-  }
+  const loaded = await loadImportWorkbook(file);
+  if ("error" in loaded) return { error: loaded.error, rows: [] };
+  const { book } = loaded;
   const sheet = book.getWorksheet(SHEET_NAME) ?? book.worksheets[0];
   if (!sheet) return { error: "The file has no sheets.", rows: [] };
 
