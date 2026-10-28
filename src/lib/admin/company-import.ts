@@ -274,9 +274,10 @@ function show(field: keyof CompanyInput, value: unknown): string {
 export async function parseCompanyImport(
   file: ArrayBuffer,
   scope: Department[] | null,
-  existing: { companies: ExistingCompany[]; slugs: Set<string> }
+  existing: { companies: ExistingCompany[]; slugs: Set<string> },
+  fileName = ""
 ): Promise<ParsedImport> {
-  const loaded = await loadImportWorkbook(file);
+  const loaded = await loadImportWorkbook(file, fileName);
   if ("error" in loaded) return { error: loaded.error, rows: [] };
   const { book } = loaded;
   const sheet = book.getWorksheet(SHEET_NAME) ?? book.worksheets[0];

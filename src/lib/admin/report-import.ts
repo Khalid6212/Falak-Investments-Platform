@@ -199,9 +199,10 @@ export async function parseReportImport(
   file: ArrayBuffer,
   template: ImportTemplate,
   companies: { id: string; nameEn: string; nameAr: string }[],
-  cycles: ExistingCycleRef[]
+  cycles: ExistingCycleRef[],
+  fileName = ""
 ): Promise<ParsedReportImport> {
-  const loaded = await loadImportWorkbook(file);
+  const loaded = await loadImportWorkbook(file, fileName);
   if ("error" in loaded) return { error: loaded.error, rows: [] };
   const { book } = loaded;
   const sheet = book.getWorksheet(SHEET_NAME) ?? book.worksheets[0];

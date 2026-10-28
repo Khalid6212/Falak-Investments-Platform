@@ -202,15 +202,31 @@ test("report import: a period overlapping an existing cycle on other dates is fl
   assert.equal(matched.rows[0].action, "fill");
 });
 
-test("report import: a protected (labelled/password) file gets a message saying so, not 'upload .xlsx'", async () => {
-  // Encrypted Office files start with the compound-file signature D0 CF 11 E0.
-  const encrypted = new Uint8Array(512);
-  encrypted.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
-  const parsed = await parseReportImport(encrypted.buffer, TEMPLATE, COMPANIES, []);
-  assert.match(parsed.error ?? "", /protected/);
-  assert.match(parsed.error ?? "", /Sensitivity/);
-
+test("report import: a file that isn't Excel at all is refused with how to save it properly", async () => {
   const notExcel = new TextEncoder().encode("Startup,Period\nAcme,Q3 2025\n");
   const csv = await parseReportImport(notExcel.buffer as ArrayBuffer, TEMPLATE, COMPANIES, []);
-  assert.match(csv.error ?? "", /Save As > Excel Workbook/);
+  assert.match(csv.error ?? "", /couldn.t be read as an Excel workbook/);
+});
+
+test("report import: each kind of unopenable file gets its own message; CSV works", async () => {
+  // Office compound files (D0 CF 11 E0) named by their internal streams (UTF-16).
+  const compound = (...streams: string[]) => {
+    const parts = [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(504), ...streams.map((s) => Buffer.from(s, "utf16le"))];
+    const b = Buffer.concat(parts);
+    return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+  };
+  const err = async (file: ArrayBuffer, name = "x.xlsx") => (await parseReportImport(file, TEMPLATE, COMPANIES, [], name)).error ?? "";
+  assert.match(await err(compound("EncryptionInfo", "EncryptedPackage", "\u0006DataSpaces", "DRMEncryptedTransform")), /Sensitivity label/);
+  assert.match(await err(compound("EncryptionInfo", "EncryptedPackage", "StrongEncryptionDataSpace")), /password-protected/);
+  assert.match(await err(compound("Workbook", "SummaryInformation")), /97-2003/);
+
+  // Excel's "CSV UTF-8" (with its byte-order mark) imports like the workbook.
+  const csv = Buffer.from(
+    "\uFEFFStartup (English name) *,Period *,Period start,Period end,Deadline,Revenue B2B [revenue_b2b] *,Net cash flow [fin_monthly_net_cash_flow] *\r\nAcme,Q3 2025,,,,250000,-40000\r\n",
+    "utf8"
+  );
+  const parsed = await parseReportImport(csv.buffer.slice(csv.byteOffset, csv.byteOffset + csv.byteLength) as ArrayBuffer, TEMPLATE, COMPANIES, [], "past.csv");
+  assert.equal(parsed.error, undefined);
+  assert.equal(parsed.rows[0].action, "new");
+  assert.deepEqual(parsed.rows[0].values.map((v) => v.rawValue), ["250000", "-40000"]);
 });

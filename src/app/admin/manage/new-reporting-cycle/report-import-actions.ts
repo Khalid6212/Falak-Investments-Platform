@@ -63,15 +63,15 @@ export async function importReportsAction(_prev: ReportImportState, formData: Fo
   if (typeof templateId !== "string" || !templateId) return { error: "Choose the reporting template the file was made for." };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose the Excel file to upload." };
   if (file.size > MAX_FILE_BYTES) return { error: "The file is too large. Keep it under 2 MB (or split it)." };
-  if (!/\.xlsx$/i.test(file.name)) return { error: "Upload an .xlsx file (the downloaded template, filled in)." };
 
   const template = await loadImportTemplate(templateId);
   if (!template) return { error: "That reporting template wasn't found. Reload and try again." };
   const companies = await loadImportCompanies(departments);
   const cycles = await loadImportCycles(companies.map((c) => c.id));
 
-  const parsed = await parseReportImport(await file.arrayBuffer(), template, companies, cycles);
-  if (parsed.error) return { error: parsed.error, mode };
+  const parsed = await parseReportImport(await file.arrayBuffer(), template, companies, cycles, file.name);
+  // The file as received, so a screenshot of the message shows what arrived.
+  if (parsed.error) return { error: `${parsed.error} (File received: "${file.name}", ${Math.max(1, Math.round(file.size / 1024))} KB.)`, mode };
 
   const toResult = (r: ParsedReportRow, outcome?: ReportImportRowResult["outcome"]): ReportImportRowResult => ({
     rowNumber: r.rowNumber,

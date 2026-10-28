@@ -61,7 +61,6 @@ export async function importCompaniesAction(_prevState: ImportState, formData: F
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose the Excel file to upload." };
   if (file.size > MAX_FILE_BYTES) return { error: "The file is too large. Keep it under 900 KB (about 300 startups)." };
-  if (!/\.xlsx$/i.test(file.name)) return { error: "Upload an .xlsx file (the template, filled in)." };
 
   // Live startups are matched by name; every link name in use (deleted
   // startups included) is avoided, since that column is unique.
@@ -71,8 +70,9 @@ export async function importCompaniesAction(_prevState: ImportState, formData: F
     slugs: new Set(all.map((c) => c.slug.toLowerCase())),
   };
 
-  const parsed = await parseCompanyImport(await file.arrayBuffer(), departments, existing);
-  if (parsed.error) return { error: parsed.error, mode };
+  const parsed = await parseCompanyImport(await file.arrayBuffer(), departments, existing, file.name);
+  // The file as received, so a screenshot of the message shows what arrived.
+  if (parsed.error) return { error: `${parsed.error} (File received: "${file.name}", ${Math.max(1, Math.round(file.size / 1024))} KB.)`, mode };
 
   const toResult = (r: (typeof parsed.rows)[number], outcome?: ImportRowResult["outcome"]): ImportRowResult => ({
     rowNumber: r.rowNumber,

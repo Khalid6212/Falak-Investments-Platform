@@ -139,7 +139,7 @@ export function CompanyImportPanel() {
             id="import-file"
             name="file"
             type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
             className="text-sm text-foreground file:me-3 file:cursor-pointer file:border-0 file:bg-surface-muted file:px-3 file:py-1.5 file:text-sm file:font-medium"
           />
         </div>
