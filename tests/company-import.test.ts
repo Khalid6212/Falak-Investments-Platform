@@ -44,7 +44,7 @@ async function filledTemplate(rows: Record<string, string>[]): Promise<ArrayBuff
     }
   });
   const out = await book.xlsx.writeBuffer();
-  return out instanceof ArrayBuffer ? out : (out as Uint8Array).buffer.slice(0) as ArrayBuffer;
+  return out instanceof ArrayBuffer ? out : new Uint8Array(out as Uint8Array).buffer as ArrayBuffer;
 }
 
 const VALID = {
@@ -163,7 +163,7 @@ test("company import: a file without the template's headers is refused as a whol
   const book = new ExcelJS.Workbook();
   book.addWorksheet("Sheet1").addRow(["Company", "Sector"]);
   const out = await book.xlsx.writeBuffer();
-  const { error, rows } = await parseCompanyImport((out as Uint8Array).buffer.slice(0) as ArrayBuffer, null, NONE);
+  const { error, rows } = await parseCompanyImport(new Uint8Array(out as Uint8Array).buffer as ArrayBuffer, null, NONE);
   assert.match(error ?? "", /header row is missing/);
   assert.equal(rows.length, 0);
 });
@@ -200,7 +200,7 @@ test("company import: a file from the first template, with websites under \"Web 
   for (const [header, value] of Object.entries({ ...VALID, "Name (English)": "EyeGo" })) sheet.getCell(2, col[header]).value = value;
   sheet.getCell(2, col["Website"]).value = "www.eyego.com";
   const out = await book.xlsx.writeBuffer();
-  const { rows } = await parseCompanyImport((out as Uint8Array).buffer.slice(0) as ArrayBuffer, null, NONE);
+  const { rows } = await parseCompanyImport(new Uint8Array(out as Uint8Array).buffer as ArrayBuffer, null, NONE);
   assert.deepEqual(rows[0].problems, []);
   assert.equal(rows[0].input!.nameEn, "EyeGo");
   assert.equal(rows[0].input!.website, "https://www.eyego.com");

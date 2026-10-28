@@ -203,9 +203,9 @@ test("report import: a period overlapping an existing cycle on other dates is fl
 });
 
 test("report import: a file that isn't Excel at all is refused with how to save it properly", async () => {
-  const notExcel = new TextEncoder().encode("Startup,Period\nAcme,Q3 2025\n");
-  const csv = await parseReportImport(notExcel.buffer as ArrayBuffer, TEMPLATE, COMPANIES, []);
-  assert.match(csv.error ?? "", /couldn.t be read as an Excel workbook/);
+  const notExcel = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]); // a PNG image
+  const parsed = await parseReportImport(notExcel.buffer as ArrayBuffer, TEMPLATE, COMPANIES, [], "report.xlsx");
+  assert.match(parsed.error ?? "", /couldn.t be read as an Excel workbook/);
 });
 
 test("report import: each kind of unopenable file gets its own message; CSV works", async () => {
@@ -229,4 +229,38 @@ test("report import: each kind of unopenable file gets its own message; CSV work
   assert.equal(parsed.error, undefined);
   assert.equal(parsed.rows[0].action, "new");
   assert.deepEqual(parsed.rows[0].values.map((v) => v.rawValue), ["250000", "-40000"]);
+});
+
+test("report import: a file the full Excel reader trips over is read by its cell values", async () => {
+  const JSZip = (await import("jszip")).default;
+  const good = await filled([["Acme", "Custom", d("2025-02-01"), d("2025-04-30"), d("2025-05-31"), 250000, -40000, "No"]]);
+  // Break a part the imports never need, as unusual workbooks do.
+  const zip = await JSZip.loadAsync(good);
+  zip.file("xl/theme/theme1.xml", "<a:theme <<< not xml");
+  const sheetPath = Object.keys(zip.files).find((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))!;
+  const sheetXml = await zip.file(sheetPath)!.async("string");
+  zip.file(sheetPath, sheetXml.replace("</worksheet>", "<extLst><ext uri=\"x\"><bogus>").replace(/<bogus>$/, "<bogus></ext></extLst></worksheet>"));
+  const styles = await zip.file("xl/styles.xml")!.async("string");
+  zip.file("xl/styles.xml", styles.replace("</styleSheet>", "<dxfs count=\"1\"><dxf><font><b val=\"nonsense\"/></font></dxf></dxfs><broken></styleSheet>"));
+  const broken = (await zip.generateAsync({ type: "uint8array" })).buffer as ArrayBuffer;
+
+  const parsed = await parseReportImport(broken, TEMPLATE, COMPANIES, [], "Danah.xlsx");
+  assert.equal(parsed.error, undefined);
+  const [acme] = parsed.rows;
+  assert.deepEqual(acme.problems, []);
+  assert.deepEqual([acme.periodStart, acme.periodEnd, acme.deadline], [d("2025-02-01"), d("2025-04-30"), d("2025-05-31")]);
+  assert.deepEqual(acme.values.map((v) => v.rawValue), ["250000", "-40000", "No"]);
+});
+
+test("report import: a web page saved as .xlsx is named as such", async () => {
+  const page = new TextEncoder().encode("<html><body><table><tr><td>Acme</td></tr></table></body></html>").buffer as ArrayBuffer;
+  const parsed = await parseReportImport(page, TEMPLATE, COMPANIES, [], "report.xlsx");
+  assert.match(parsed.error ?? "", /web page/);
+});
+
+test("report import: a CSV with an .xlsx name is still read", async () => {
+  const csv = '﻿Startup (English name),Period,Revenue B2B [revenue_b2b],Net cash flow [fin_monthly_net_cash_flow]\nAcme,Q3 2025,100,-5\n';
+  const parsed = await parseReportImport(new TextEncoder().encode(csv).buffer as ArrayBuffer, TEMPLATE, COMPANIES, [], "report.xlsx");
+  assert.equal(parsed.error, undefined);
+  assert.deepEqual(parsed.rows[0].values.map((v) => v.rawValue), ["100", "-5"]);
 });

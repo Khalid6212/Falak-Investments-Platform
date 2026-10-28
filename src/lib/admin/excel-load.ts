@@ -1,6 +1,7 @@
 import "server-only";
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
+import { readXlsxValues } from "@/lib/admin/xlsx-values";
 
 // Opens an uploaded file for the Excel imports (.xlsx, or .csv), with a
 // message that names what's actually wrong when it can't.
@@ -17,6 +18,9 @@ export const PASSWORD_PROTECTED_ERROR =
 
 export const OLD_XLS_ERROR =
   'This is an older Excel 97-2003 file (.xls), even if its name ends in .xlsx. In Excel, use File > Save As > "Excel Workbook (.xlsx)" and upload the saved copy.';
+
+const NOT_A_WORKBOOK_ERROR =
+  'This file is a web page or an old "XML Spreadsheet", not an Excel workbook, even if its name ends in .xlsx. In Excel, use File > Save As > "Excel Workbook (.xlsx)" and upload the saved copy.';
 
 const UNREADABLE_ERROR =
   'That file couldn\'t be read as an Excel workbook. Open it in Excel, use File > Save As > "Excel Workbook (.xlsx)" (or CSV UTF-8), and upload the saved copy.';
@@ -63,7 +67,19 @@ export async function loadImportWorkbook(file: ArrayBuffer, fileName = ""): Prom
     return { error: compoundFileError(bytes) };
   }
 
-  if (/\.csv$/i.test(fileName)) {
+  // Not a zip, so not a real .xlsx whatever its name: a web page or the
+  // old "XML Spreadsheet" saved as .xlsx, or a CSV under another name.
+  const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b;
+  let looksLikeCsv = false;
+  if (!isZip) {
+    const sample = bytes.subarray(0, 4096);
+    const head = sample.toString("utf8").replace(/^﻿/, "").trimStart().toLowerCase();
+    if (head.startsWith("<")) return { error: NOT_A_WORKBOOK_ERROR };
+    looksLikeCsv = !sample.includes(0) && /[,;\t]/.test(head.split("\n")[0]);
+    if (!looksLikeCsv) return { error: UNREADABLE_ERROR };
+  }
+
+  if (/\.csv$/i.test(fileName) || looksLikeCsv) {
     const book = new ExcelJS.Workbook();
     try {
       // Excel's "CSV UTF-8" starts with a byte-order mark; drop it so the first header matches.
@@ -86,8 +102,15 @@ export async function loadImportWorkbook(file: ArrayBuffer, fileName = ""): Prom
       await book.xlsx.load(file, { ignoreNodes: SKIPPABLE } as Parameters<ExcelJS.Xlsx["load"]>[1]);
       return { book };
     } catch (second) {
-      console.error("Excel import: file couldn't be read:", { fileName, size: bytes.length, head: bytes.subarray(0, 8).toString("hex") }, first, second);
-      return { error: UNREADABLE_ERROR };
+      try {
+        // Last resort: read just the cell values, skipping everything else.
+        return { book: await readXlsxValues(file) };
+      } catch (third) {
+        console.error("Excel import: file couldn't be read:", { fileName, size: bytes.length, head: bytes.subarray(0, 8).toString("hex") }, first, second, third);
+        // The reader's own words, short, so a screenshot shows the cause.
+        const detail = String((third as Error)?.message ?? third).slice(0, 120);
+        return { error: `${UNREADABLE_ERROR} (Detail: ${detail}; ${String((first as Error)?.message ?? first).slice(0, 120)})` };
+      }
     }
   }
 }
