@@ -67,7 +67,7 @@ function comparisonFields(
 ): SubmissionMetricFieldDTO[] {
   const byKey = new Map<string, SubmissionMetricFieldDTO>();
   for (const field of [...metrics, ...previousMetrics]) {
-    if (byKey.has(field.key) || field.dataType === "Text" || REVENUE_METRIC_KEYS.includes(field.key)) continue;
+    if (byKey.has(field.key) || field.dataType === "Text" || field.dataType === "Date" || REVENUE_METRIC_KEYS.includes(field.key)) continue;
     byKey.set(field.key, field);
   }
   return [...byKey.values()];

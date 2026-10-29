@@ -264,3 +264,27 @@ test("report import: a CSV with an .xlsx name is still read", async () => {
   assert.equal(parsed.error, undefined);
   assert.deepEqual(parsed.rows[0].values.map((v) => v.rawValue), ["100", "-5"]);
 });
+
+test("report import: a Date metric takes Excel date cells and typed dates alike", async () => {
+  const dated = { ...TEMPLATE, metrics: [...TEMPLATE.metrics, { id: "m_cashout", key: "expected_cash_out_date", labelEn: "Expected cash out date", dataType: "Date" as const, required: false }] };
+  const book = new ExcelJS.Workbook();
+  await book.xlsx.load((await buildReportImportTemplate(dated, ["Acme", "Beta", "Gamma"])) as unknown as ArrayBuffer);
+  const sheet = book.getWorksheet("Reports")!;
+  const rows: (string | number | Date | null)[][] = [
+    ["Acme", "Q3 2025", null, null, null, 1, 2, "No", d("2026-12-31")],
+    ["Beta", "Q3 2025", null, null, null, 1, 2, "No", "2026-12-31"],
+    ["Gamma", "Q3 2025", null, null, null, 1, 2, "No", "31/12/2026"],
+  ];
+  rows.forEach((r, i) => r.forEach((v, j) => (sheet.getCell(i + 2, j + 1).value = v)));
+  const file = new Uint8Array((await book.xlsx.writeBuffer()) as Uint8Array).buffer as ArrayBuffer;
+  const parsed = await parseReportImport(file, dated, COMPANIES, []);
+  assert.equal(parsed.error, undefined);
+  for (const row of parsed.rows) {
+    assert.deepEqual(row.problems, [], row.startup);
+    assert.equal(row.values.find((v) => v.metricDefinitionId === "m_cashout")?.rawValue !== undefined, true);
+  }
+  // A non-date is reported on its row.
+  sheet.getCell(2, 9).value = "soon";
+  const bad = await parseReportImport(new Uint8Array((await book.xlsx.writeBuffer()) as Uint8Array).buffer as ArrayBuffer, dated, COMPANIES, []);
+  assert.match(bad.rows[0].problems.join(" "), /Enter a date/);
+});

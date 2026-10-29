@@ -11,7 +11,7 @@ import { updateReportingTemplateAction } from "../../actions";
 import { labelClass, fieldClass, initialActionState, FormMessage } from "./shared";
 import type { TemplateForEdit } from "@/lib/admin/template-edit";
 
-const METRIC_DATA_TYPES = ["Currency", "Percent", "Number", "Text", "Boolean"] as const;
+const METRIC_DATA_TYPES = ["Currency", "Percent", "Number", "Date", "Text", "Boolean"] as const;
 // Matches MAX_METRIC_ROWS in the template actions.
 const MAX_NEW_ROWS = 40;
 

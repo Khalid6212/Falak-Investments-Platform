@@ -708,6 +708,7 @@ enum MetricDataType {
   Number
   Text
   Boolean
+  Date
 }
 
 // Insert/update/delete-locked once the owning ReportingTemplate is

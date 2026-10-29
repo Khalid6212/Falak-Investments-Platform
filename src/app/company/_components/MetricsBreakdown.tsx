@@ -93,7 +93,7 @@ export function MetricsBreakdown({ metrics, currency, revenue, previousRevenue, 
     const formatted = formatMetricValue(field, currency, lang);
     if (formatted === null) return naDisplay;
     const hint = percentileHint(field.key);
-    if (field.dataType === "Text" || field.dataType === "Boolean") {
+    if (field.dataType === "Text" || field.dataType === "Boolean" || field.dataType === "Date") {
       return (
         <>
           <span className="whitespace-pre-wrap">{formatted}</span>

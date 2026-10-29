@@ -1,4 +1,5 @@
-import { formatCurrency, formatPercent, formatNumber } from "@/lib/format";
+import { formatCurrency, formatPercent, formatNumber, formatDate } from "@/lib/format";
+import { isIsoDay } from "@/lib/reporting/metric-date";
 import type { AppLocale } from "@/lib/format";
 import type { Currency } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "./dto";
@@ -38,6 +39,9 @@ export function formatMetricValue(field: SubmissionMetricFieldDTO, currency: Cur
       return formatNumber(Number(field.value), lang);
     case "Percent":
       return formatPercent(Number(field.value) / 100, lang);
+    case "Date":
+      // Stored as YYYY-MM-DD; anything older that isn't shows as typed.
+      return isIsoDay(field.value) ? formatDate(field.value, lang) : field.value;
     case "Boolean":
     case "Text":
       return field.value;

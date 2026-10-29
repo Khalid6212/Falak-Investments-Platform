@@ -45,6 +45,7 @@ const DATA_TYPE_HINT: Record<MetricDataType, string> = {
   Percent: "A percentage, e.g. 12.5 or -3.",
   Boolean: "Yes or No.",
   Text: "Text.",
+  Date: "A date, e.g. 31/12/2026 or 2026-12-31 (an Excel date cell works too).",
 };
 
 /** The Excel sheet to fill in for one template, with the startups to choose from. */
@@ -63,6 +64,10 @@ export async function buildReportImportTemplate(template: ImportTemplate, startu
   header.height = 45;
   FIXED.forEach((c, i) => (header.getCell(i + 1).note = c.note));
   template.metrics.forEach((m, i) => (header.getCell(FIXED.length + i + 1).note = `${m.dataType}. ${DATA_TYPE_HINT[m.dataType]} "N/A" if it doesn't apply.`));
+  // Date metrics show as dates in Excel, whatever the computer's own format.
+  template.metrics.forEach((m, i) => {
+    if (m.dataType === "Date") sheet.getColumn(FIXED.length + i + 1).numFmt = "dd/mm/yyyy";
+  });
 
   const lists = book.addWorksheet("Lists");
   lists.getColumn(1).width = 40;
@@ -137,11 +142,16 @@ function cellDate(cell: ExcelJS.Cell): Date | null | "invalid" {
   return "invalid";
 }
 
-/** A figure cell as typed: numbers as plain digits (no Excel formatting), formulas by their result. */
+/** A figure cell as typed: numbers as plain digits (no Excel formatting), dates as YYYY-MM-DD, formulas by their result. */
 function cellValue(cell: ExcelJS.Cell): string {
   const v = cell.value;
   if (typeof v === "number") return String(v);
-  if (v && typeof v === "object" && "result" in v && typeof v.result === "number") return String(v.result);
+  // A date cell as its day, for Date metrics (cell.text would be the JS date string).
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v && typeof v === "object" && "result" in v) {
+    if (typeof v.result === "number") return String(v.result);
+    if (v.result instanceof Date) return v.result.toISOString().slice(0, 10);
+  }
   return cell.text.trim();
 }
 

@@ -3,6 +3,7 @@ import type { Prisma, MetricDataType, SubmissionStatus } from "@/generated/prism
 import { db } from "@/lib/db";
 import { requireCompanyMembership, requireFalakRole } from "@/lib/auth/authorization";
 import { SUBMITTABLE_FROM_STATUSES } from "@/lib/reporting/submission-status";
+import { parseMetricDate } from "@/lib/reporting/metric-date";
 import { writeAuditEvent } from "@/lib/audit/write-audit-event";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 
@@ -80,6 +81,7 @@ const INVALID_MESSAGE: Record<MetricDataType, string> = {
   Percent: "Enter a percentage, e.g. 12.5 or -3.",
   Boolean: "Choose Yes or No.",
   Text: `Up to ${MAX_RAW_VALUE_LENGTH} characters.`,
+  Date: "Enter a date, e.g. 31/12/2026, 2026-12-31 or 31 Dec 2026.",
 };
 
 /**
@@ -328,6 +330,11 @@ function toStoredValue(field: MetricValueInput, dataType: MetricDataType): Store
     }
     case "Text":
       return { numericValue: null, textValue: trimmed, isNa: false };
+    case "Date": {
+      const day = parseMetricDate(trimmed);
+      if (day === null) return "invalid";
+      return { numericValue: null, textValue: day, isNa: false };
+    }
     default: {
       const exhaustiveCheck: never = dataType;
       throw new Error(`Unhandled MetricDataType: ${String(exhaustiveCheck)}`);

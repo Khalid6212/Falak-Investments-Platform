@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { isIsoDay } from "@/lib/reporting/metric-date";
 import { useForm } from "@/components/forms/useForm";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -69,6 +70,16 @@ export function MetricField({
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </Select>
+      ) : field.dataType === "Date" ? (
+        // An older answer that isn't a date stays visible to correct, not silently cleared.
+        <Input
+          id={inputName}
+          name={inputName}
+          type={field.value && !isIsoDay(field.value) ? "text" : "date"}
+          placeholder="31/12/2026"
+          defaultValue={field.value ?? ""}
+          disabled={field.isNa}
+        />
       ) : (
         <Input
           id={inputName}

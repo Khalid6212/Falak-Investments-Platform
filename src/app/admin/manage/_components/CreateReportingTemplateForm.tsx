@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { createReportingTemplateAction, type ActionState } from "../../actions";
 import { labelClass, fieldClass, FormMessage, FieldError, fieldA11y, invalidClass, prefill, useEntityForm } from "./shared";
 
-const METRIC_DATA_TYPES = ["Currency", "Percent", "Number", "Text", "Boolean"] as const;
+const METRIC_DATA_TYPES = ["Currency", "Percent", "Number", "Date", "Text", "Boolean"] as const;
 // Matches MAX_METRIC_ROWS in the template actions.
 const MAX_ROWS = 40;
 

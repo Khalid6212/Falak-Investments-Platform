@@ -4,7 +4,7 @@ import type { FieldErrors, FormValues } from "@/lib/admin/entity-validation";
 // Validation for the New Reporting Template form, one message per bad
 // field so only that field is highlighted.
 
-const METRIC_DATA_TYPES: MetricDataType[] = ["Currency", "Percent", "Number", "Text", "Boolean"];
+const METRIC_DATA_TYPES: MetricDataType[] = ["Currency", "Percent", "Number", "Date", "Text", "Boolean"];
 const MAX_NAME_LENGTH = 200;
 const MAX_METRIC_ROWS = 40;
 

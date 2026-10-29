@@ -57,7 +57,7 @@ export interface InviteActionState {
 const GENERIC_ERROR = "Something went wrong. Check your input and try again.";
 const MAX_NAME_LENGTH = 200;
 const CURRENCIES: Currency[] = ["SAR", "USD"];
-const METRIC_DATA_TYPES: MetricDataType[] = ["Currency", "Percent", "Number", "Text", "Boolean"];
+const METRIC_DATA_TYPES: MetricDataType[] = ["Currency", "Percent", "Number", "Date", "Text", "Boolean"];
 // Bumped from 20 -- a comprehensive template (financial + health +
 // customer + qualitative fields, matching a real investor-reporting
 // spreadsheet) comfortably exceeds the old cap.
