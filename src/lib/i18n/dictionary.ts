@@ -420,7 +420,7 @@ export interface Dictionary {
       reportImportTitle: string;
       reportImportIntro: string;
       reportImportTemplateAction: string;
-      reportImportRunAction: string;
+      reportImportFileAction: string;
       reportImportNewLabel: string;
       reportImportFillLabel: string;
       reportImportDoneLabel: string;
@@ -1276,7 +1276,7 @@ export const en = {
       reportImportTitle: "Import reports from Excel",
       reportImportIntro: "For reports gathered before the platform or collected by hand. Choose the reporting template, download its file and fill in one row per startup per period (e.g. Q3 2025). Each row is added as a submitted report for that startup and period, waiting for review; once approved and published its figures appear everywhere, like any other report.",
       reportImportTemplateAction: "Download this template's Excel file",
-      reportImportRunAction: "Import {count} report(s)",
+      reportImportFileAction: "Import file",
       reportImportNewLabel: "Ready: new report for review",
       reportImportFillLabel: "Ready: fills in the unsent report for this period",
       reportImportDoneLabel: "Imported: submitted for review",
@@ -1287,7 +1287,7 @@ export const en = {
       reportImportIgnoredColumns: "Columns not recognised and ignored: {columns}",
       sendRequestEmailLabel: "Email the request to the startup now",
       sendRequestEmailHint: "Untick to create the cycle without emailing anyone, e.g. when you already have the figures and will enter them with Manual add. You can send it later with Resend.",
-      reportImportCheckedNote: "Checked only: nothing has been imported yet. {ready} of {total} rows are ready. Click \"Import {ready} report(s)\" to add them.",
+      reportImportCheckedNote: "Checked only: nothing has been imported yet. {ready} of {total} rows are ready. Click \"Import file\" to add them.",
       reportImportCheckedNoneNote: "Checked only: nothing has been imported. None of the {total} rows can be imported yet; fix the problems below and check the file again.",
       editMetricAction: "Edit",
       metricUnlockedNote: "Editing: the key can change unless charts use it, and the type can switch between Currency, Percent and Number.",
@@ -2138,7 +2138,7 @@ export const ar = {
       reportImportTitle: "استيراد التقارير من Excel",
       reportImportIntro: "للتقارير التي جُمعت قبل المنصة أو يدوياً. اختر نموذج التقرير، ونزّل ملفه، وأدخل صفاً لكل شركة لكل فترة (مثلاً Q3 2025). يُضاف كل صف كتقرير مُرسل لتلك الشركة والفترة بانتظار المراجعة، وبعد اعتماده ونشره تظهر أرقامه في كل مكان مثل أي تقرير آخر.",
       reportImportTemplateAction: "تنزيل ملف Excel لهذا النموذج",
-      reportImportRunAction: "استيراد {count} تقرير",
+      reportImportFileAction: "استيراد الملف",
       reportImportNewLabel: "جاهز: تقرير جديد للمراجعة",
       reportImportFillLabel: "جاهز: يُكمل التقرير غير المرسل لهذه الفترة",
       reportImportDoneLabel: "تم الاستيراد: مُرسل للمراجعة",
@@ -2149,7 +2149,7 @@ export const ar = {
       reportImportIgnoredColumns: "أعمدة غير معروفة تم تجاهلها: {columns}",
       sendRequestEmailLabel: "إرسال الطلب إلى الشركة بالبريد الآن",
       sendRequestEmailHint: "أزل التحديد لإنشاء الدورة دون مراسلة أحد، مثلاً عندما تتوفر الأرقام لديك وستدخلها عبر الإضافة اليدوية. يمكنك إرساله لاحقاً عبر إعادة الإرسال.",
-      reportImportCheckedNote: "تم الفحص فقط: لم يُستورد شيء بعد. {ready} من {total} صفاً جاهزة. اضغط \"استيراد\" لإضافتها.",
+      reportImportCheckedNote: "تم الفحص فقط: لم يُستورد شيء بعد. {ready} من {total} صفاً جاهزة. اضغط \"استيراد الملف\" لإضافتها.",
       reportImportCheckedNoneNote: "تم الفحص فقط: لم يُستورد شيء. لا يمكن استيراد أي من الصفوف الـ {total} بعد؛ أصلح المشكلات أدناه وافحص الملف مرة أخرى.",
       editMetricAction: "تعديل",
       metricUnlockedNote: "وضع التعديل: يمكن تغيير المفتاح ما لم تعتمد عليه الرسوم البيانية، ويمكن التبديل بين عملة ونسبة ورقم.",
