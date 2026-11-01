@@ -71,3 +71,29 @@ test("cap table: with nothing contributed yet, ownership falls back to the store
   assert.equal(table.rows[0].contributed, 0);
   assert.equal(table.rows[0].ownershipPct, 0.25);
 });
+
+test("cap table: amounts recorded per startup replace the position's own amount", async () => {
+  const dec = (n: number) => ({ toNumber: () => n });
+  const { positionContributions } = await import("../src/lib/vehicle/cap-table-compute.ts");
+  // Edited per startup: the older amount on the position no longer counts.
+  assert.deepEqual(
+    positionContributions({ commitmentAmount: dec(8000), currency: "USD", startupExposures: [{ investedAmount: dec(9161.5), currency: "USD" }] }),
+    [{ amount: 9161.5, currency: "USD" }]
+  );
+  // Several startups, and one in another currency.
+  assert.deepEqual(
+    positionContributions({
+      commitmentAmount: null,
+      currency: "USD",
+      startupExposures: [
+        { investedAmount: dec(100), currency: "USD" },
+        { investedAmount: dec(375), currency: "SAR" },
+        { investedAmount: null, currency: null },
+      ],
+    }),
+    [{ amount: 100, currency: "USD" }, { amount: 375, currency: "SAR" }]
+  );
+  // Nothing per startup: the position's amount, or nothing at all.
+  assert.deepEqual(positionContributions({ commitmentAmount: dec(25000), currency: "USD", startupExposures: [{ investedAmount: null, currency: null }] }), [{ amount: 25000, currency: "USD" }]);
+  assert.deepEqual(positionContributions({ commitmentAmount: null, currency: "USD", startupExposures: [] }), []);
+});

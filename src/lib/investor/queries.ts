@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireCurrentUser } from "@/lib/auth/authorization";
 import { REVENUE_METRIC_KEYS, sumRevenueMetricValues } from "@/lib/reporting/revenue-metrics";
 import { convertToDisplay } from "@/lib/currency/convert";
+import { positionContributions } from "@/lib/vehicle/cap-table-compute";
 import type { Currency } from "@/generated/prisma/client";
 import type {
   InvestorPortfolioData,
@@ -269,7 +270,13 @@ export async function getInvestorPortfolioData(): Promise<InvestorPortfolioData>
     vehicleIds.length
       ? db.investorVehiclePosition.findMany({
           where: { vehicleId: { in: vehicleIds }, status: "Active", investor: { archivedAt: null } },
-          select: { investorId: true, vehicleId: true, commitmentAmount: true, currency: true },
+          select: {
+            investorId: true,
+            vehicleId: true,
+            commitmentAmount: true,
+            currency: true,
+            startupExposures: { where: { status: "Active" }, select: { investedAmount: true, currency: true } },
+          },
         })
       : Promise.resolve([]),
     vehicleIds.length
@@ -299,17 +306,13 @@ export async function getInvestorPortfolioData(): Promise<InvestorPortfolioData>
         return true;
       });
 
-    const vehiclePositionsHere = allVehiclePositions.filter(
-      (p) => p.vehicleId === vehicle.id && p.commitmentAmount !== null
-    );
+    const vehiclePositionsHere = allVehiclePositions.filter((p) => p.vehicleId === vehicle.id);
     const contributions = vehiclePositionsHere
       .filter((p) => p.investorId === position.investorId)
-      .map((p) => ({ amount: p.commitmentAmount!.toNumber(), currency: p.currency }));
+      .flatMap((p) => positionContributions(p));
     const inVehicleCurrency = (amounts: { amount: number; currency: Currency }[]) =>
       amounts.reduce((s, a) => s + convertToDisplay(a.amount, a.currency, vehicle.currency), 0);
-    const totalContributed = inVehicleCurrency(
-      vehiclePositionsHere.map((p) => ({ amount: p.commitmentAmount!.toNumber(), currency: p.currency }))
-    );
+    const totalContributed = inVehicleCurrency(vehiclePositionsHere.flatMap((p) => positionContributions(p)));
 
     vehicleExposures.push({
       id: vehicle.id,

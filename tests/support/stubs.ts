@@ -1115,7 +1115,7 @@ export function makeInvestorQueriesDbStub(options: {
             commitmentAmount: p.commitmentAmount == null ? null : { toNumber: () => p.commitmentAmount },
             currency: p.currency ?? "SAR",
             exposureScope: p.exposureScope ?? "ALL_STARTUPS",
-            startupExposures: (p.exposedCompanyIds ?? []).map((companyId) => ({ companyId })),
+            startupExposures: (p.exposedCompanyIds ?? []).map((companyId) => ({ companyId, investedAmount: null, currency: null })),
           })),
     },
     vehicleNavSnapshot: {

@@ -37,6 +37,28 @@ export interface VehicleCapTable {
   totals: { contributed: number; netInvested: number; ownershipPct: number | null };
 }
 
+interface DecimalLike {
+  toNumber(): number;
+}
+
+/**
+ * What an investor put into a vehicle through one position: the amounts
+ * recorded per startup when there are any (they are what gets edited, and
+ * they add up to the vehicle's investments), otherwise the single amount
+ * on the position itself. The one definition for every screen and export.
+ */
+export function positionContributions(position: {
+  commitmentAmount: DecimalLike | null;
+  currency: Currency;
+  startupExposures?: { investedAmount: DecimalLike | null; currency: Currency | null }[];
+}): MoneyAmount[] {
+  const perStartup = (position.startupExposures ?? [])
+    .filter((e) => e.investedAmount !== null)
+    .map((e) => ({ amount: e.investedAmount!.toNumber(), currency: e.currency ?? position.currency }));
+  if (perStartup.length > 0) return perStartup;
+  return position.commitmentAmount === null ? [] : [{ amount: position.commitmentAmount.toNumber(), currency: position.currency }];
+}
+
 export function sumInDisplay(amounts: MoneyAmount[], display: DisplayCurrency): number {
   return amounts.reduce((sum, a) => sum + convertToDisplay(a.amount, a.currency, display), 0);
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { requireFalakRole } from "@/lib/auth/authorization";
-import type { MoneyAmount, VehicleCapitalOverview, VehicleCapTableInvestorRaw } from "./cap-table-compute";
+import { positionContributions, type MoneyAmount, type VehicleCapitalOverview, type VehicleCapTableInvestorRaw } from "@/lib/vehicle/cap-table-compute";
 
 const INVESTED_STATUSES = ["Active", "Superseded"] as const;
 
@@ -13,8 +13,8 @@ const INVESTED_STATUSES = ["Active", "Superseded"] as const;
  * - Invested capital: every Active/Superseded investment agreement the
  *   vehicle holds (same definition linkInvestorToVehicleAction uses to
  *   derive an investor's ownership %).
- * - Per investor: contributions from their Active positions, and
- *   management fees recorded against this vehicle.
+ * - Per investor: contributions from their Active positions (see
+ *   positionContributions), and management fees recorded against this vehicle.
  */
 export async function getVehicleCapitalOverview(vehicleId: string): Promise<VehicleCapitalOverview> {
   await requireFalakRole("FALAK_OPERATIONS");
@@ -30,6 +30,7 @@ export async function getVehicleCapitalOverview(vehicleId: string): Promise<Vehi
         commitmentAmount: true,
         ownershipPct: true,
         currency: true,
+        startupExposures: { where: { status: "Active" }, select: { investedAmount: true, currency: true } },
         investor: { select: { id: true, nameEn: true, nameAr: true } },
       },
     }),
@@ -55,9 +56,7 @@ export async function getVehicleCapitalOverview(vehicleId: string): Promise<Vehi
       managementFees: [],
       storedOwnershipPct: null,
     };
-    if (p.commitmentAmount !== null) {
-      row.contributions.push({ amount: p.commitmentAmount.toNumber(), currency: p.currency });
-    }
+    row.contributions.push(...positionContributions(p));
     if (p.ownershipPct !== null) {
       row.storedOwnershipPct = (row.storedOwnershipPct ?? 0) + p.ownershipPct.toNumber();
     }

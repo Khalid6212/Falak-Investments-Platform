@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
+import { positionContributions, sumInDisplay } from "@/lib/vehicle/cap-table-compute";
 import type { Currency, ExposureScope } from "@/generated/prisma/client";
 
 export interface InvestorVehicleAssignmentRow {
@@ -51,25 +52,35 @@ export async function getInvestorVehicleAssignments(): Promise<InvestorVehicleAs
       ownershipPct: true,
       effectiveFrom: true,
       exposureScope: true,
-      _count: { select: { startupExposures: { where: { status: "Active" } } } },
+      startupExposures: { where: { status: "Active" }, select: { investedAmount: true, currency: true } },
       investor: { select: { id: true, nameEn: true, nameAr: true } },
       vehicle: { select: { id: true, nameEn: true, nameAr: true } },
     },
   });
 
-  return positions.map((p) => ({
-    id: p.id,
-    investorId: p.investor.id,
-    investorNameEn: p.investor.nameEn,
-    investorNameAr: p.investor.nameAr,
-    vehicleId: p.vehicle.id,
-    vehicleNameEn: p.vehicle.nameEn,
-    vehicleNameAr: p.vehicle.nameAr,
-    currency: p.currency,
-    commitmentAmount: p.commitmentAmount?.toNumber() ?? null,
-    ownershipPct: p.ownershipPct?.toNumber() ?? null,
-    effectiveFrom: toDateOnly(p.effectiveFrom),
-    exposureScope: p.exposureScope,
-    exposedStartupCount: p._count.startupExposures,
-  }));
+  // Contribution and ownership as the vehicle's cap table shows them.
+  const contributedUsd = new Map<string, number>();
+  for (const p of positions) {
+    contributedUsd.set(p.vehicle.id, (contributedUsd.get(p.vehicle.id) ?? 0) + sumInDisplay(positionContributions(p), "USD"));
+  }
+
+  return positions.map((p) => {
+    const contributions = positionContributions(p);
+    const vehicleTotal = contributedUsd.get(p.vehicle.id) ?? 0;
+    return {
+      id: p.id,
+      investorId: p.investor.id,
+      investorNameEn: p.investor.nameEn,
+      investorNameAr: p.investor.nameAr,
+      vehicleId: p.vehicle.id,
+      vehicleNameEn: p.vehicle.nameEn,
+      vehicleNameAr: p.vehicle.nameAr,
+      currency: p.currency,
+      commitmentAmount: contributions.length > 0 ? sumInDisplay(contributions, p.currency) : null,
+      ownershipPct: vehicleTotal > 0 ? sumInDisplay(contributions, "USD") / vehicleTotal : (p.ownershipPct?.toNumber() ?? null),
+      effectiveFrom: toDateOnly(p.effectiveFrom),
+      exposureScope: p.exposureScope,
+      exposedStartupCount: p.startupExposures.length,
+    };
+  });
 }

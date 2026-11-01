@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import { REVENUE_METRIC_KEYS, sumRevenueMetricValues } from "@/lib/reporting/revenue-metrics";
 import { en } from "@/lib/i18n/dictionary";
+import { positionContributions, sumInDisplay } from "@/lib/vehicle/cap-table-compute";
 import type { Currency, Department } from "@/generated/prisma/client";
 
 // Excel exports for the Company List and Portfolio Dashboard. Same access
@@ -214,7 +215,7 @@ export async function writePortfolioWorkbook(deptWhere: object): Promise<Buffer>
           },
         },
         navSnapshots: { orderBy: { asOfDate: "desc" }, take: 1 },
-        positions: { where: { status: "Active" }, select: { investorId: true, commitmentAmount: true, calledAmount: true, currency: true } },
+        positions: { where: { status: "Active" }, select: { investorId: true, commitmentAmount: true, calledAmount: true, currency: true, startupExposures: { where: { status: "Active" }, select: { investedAmount: true, currency: true } } } },
       },
     }),
     db.investmentAgreement.findMany({
@@ -243,7 +244,7 @@ export async function writePortfolioWorkbook(deptWhere: object): Promise<Buffer>
     db.investorVehiclePosition.findMany({
       where: { vehicle: { archivedAt: null, ...deptWhere }, investor: { archivedAt: null } },
       orderBy: [{ vehicle: { nameEn: "asc" } }, { effectiveFrom: "asc" }],
-      include: { vehicle: { select: { nameEn: true } }, investor: { select: { nameEn: true, type: true } } },
+      include: { vehicle: { select: { nameEn: true } }, investor: { select: { nameEn: true, type: true } }, startupExposures: { where: { status: "Active" }, select: { investedAmount: true, currency: true } } },
     }),
   ]);
 
@@ -254,9 +255,7 @@ export async function writePortfolioWorkbook(deptWhere: object): Promise<Buffer>
         .filter((a) => a.investedAmount !== null && a.currency !== null)
         .map((a) => ({ amount: a.investedAmount!.toNumber(), currency: a.currency! }))
     );
-    const committed = byCurrency(
-      v.positions.filter((p) => p.commitmentAmount).map((p) => ({ amount: p.commitmentAmount!.toNumber(), currency: p.currency }))
-    );
+    const committed = byCurrency(v.positions.flatMap((p) => positionContributions(p)));
     const called = byCurrency(
       v.positions.filter((p) => p.calledAmount).map((p) => ({ amount: p.calledAmount!.toNumber(), currency: p.currency }))
     );
@@ -407,6 +406,13 @@ export async function writePortfolioWorkbook(deptWhere: object): Promise<Buffer>
     navs.map((n) => ({ vehicle: n.vehicle.nameEn, asOf: toDate(n.asOfDate), amount: num(n.navAmount), currency: n.currency, source: n.source }))
   );
 
+  // Contribution and ownership as the vehicle's cap table shows them.
+  const activeContributedUsd = new Map<string, number>();
+  for (const p of lpPositions) {
+    if (p.status !== "Active") continue;
+    activeContributedUsd.set(p.vehicleId, (activeContributedUsd.get(p.vehicleId) ?? 0) + sumInDisplay(positionContributions(p), "USD"));
+  }
+
   addSheet(
     book,
     "Vehicle Investors",
@@ -421,17 +427,22 @@ export async function writePortfolioWorkbook(deptWhere: object): Promise<Buffer>
       { header: "Currency", key: "currency" },
       { header: "Ownership", key: "ownership", numFmt: PERCENT_FORMAT },
     ],
-    lpPositions.map((p) => ({
-      vehicle: p.vehicle.nameEn,
-      investor: p.investor.nameEn,
-      investorType: en.investorTypes[p.investor.type],
-      status: p.status,
-      from: toDate(p.effectiveFrom),
-      commitment: num(p.commitmentAmount),
-      called: num(p.calledAmount),
-      currency: p.currency,
-      ownership: num(p.ownershipPct),
-    }))
+    lpPositions.map((p) => {
+      const contributions = positionContributions(p);
+      const active = p.status === "Active";
+      const vehicleTotal = activeContributedUsd.get(p.vehicleId) ?? 0;
+      return {
+        vehicle: p.vehicle.nameEn,
+        investor: p.investor.nameEn,
+        investorType: en.investorTypes[p.investor.type],
+        status: p.status,
+        from: toDate(p.effectiveFrom),
+        commitment: contributions.length > 0 ? sumInDisplay(contributions, p.currency) : null,
+        called: num(p.calledAmount),
+        currency: p.currency,
+        ownership: active && vehicleTotal > 0 ? sumInDisplay(contributions, "USD") / vehicleTotal : num(p.ownershipPct),
+      };
+    })
   );
 
   return Buffer.from(await book.xlsx.writeBuffer());
