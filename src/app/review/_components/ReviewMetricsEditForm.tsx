@@ -8,20 +8,20 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { adminUpdateSubmissionMetricValuesAction, type SaveMetricsActionState } from "../actions";
+import { staffEntryAction, type StaffEntryState } from "@/app/admin/manage/reporting-requests/actions";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 
-const initialState: SaveMetricsActionState = { error: null, success: false };
+const initialState: StaffEntryState = { error: null, success: false };
 
 // Small, intentional duplicate of MetricsEntryForm's own field renderer
 // (src/app/submit/_components/MetricsEntryForm.tsx) -- same reasoning
 // MetricsBreakdown.tsx already gives for not sharing one: this is Falak
 // correcting a company's reported values during review, a different
-// actor and a different allowed-status window (submitted/under_review
-// only, enforced server-side by adminUpdateSubmissionMetricValues) from
-// the company's own draft-editing form, even though the input markup
-// looks the same today.
+// actor and a different allowed-status window (changes_requested,
+// submitted and under_review here, enforced server-side by
+// staffSaveCycleValues) from the company's own draft-editing form, even
+// though the input markup looks the same today.
 function sectionFor(key: string): keyof Pick<Dictionary["submitReport"], "sectionFinancial" | "sectionHealth" | "sectionCustomer" | "sectionQualitative"> {
   if (key === "revenue_b2b" || key.startsWith("fin_")) return "sectionFinancial";
   if (key.startsWith("health_")) return "sectionHealth";
@@ -96,13 +96,15 @@ function MetricField({
 }
 
 interface ReviewMetricsEditFormProps {
-  submissionId: string;
+  cycleId: string;
+  /** Changes requested: the fixed report can also go back into review. */
+  canSubmit: boolean;
   metrics: SubmissionMetricFieldDTO[];
 }
 
-export function ReviewMetricsEditForm({ submissionId, metrics }: ReviewMetricsEditFormProps) {
+export function ReviewMetricsEditForm({ cycleId, canSubmit, metrics }: ReviewMetricsEditFormProps) {
   const { t, lang } = useLanguage();
-  const { state, isPending, errorFor, formProps } = useForm(adminUpdateSubmissionMetricValuesAction, initialState, {
+  const { state, isPending, errorFor, formProps } = useForm(staffEntryAction.bind(null, cycleId), initialState, {
     resetOnSuccess: false,
   });
   const groups = groupMetrics(metrics);
@@ -113,7 +115,6 @@ export function ReviewMetricsEditForm({ submissionId, metrics }: ReviewMetricsEd
 
   return (
     <form {...formProps} className="space-y-6">
-      <input type="hidden" name="submissionId" value={submissionId} />
       {(["sectionFinancial", "sectionHealth", "sectionCustomer", "sectionQualitative"] as const).map((sectionKey) =>
         groups[sectionKey].length > 0 ? (
           <div key={sectionKey} className="space-y-3">
@@ -140,13 +141,20 @@ export function ReviewMetricsEditForm({ submissionId, metrics }: ReviewMetricsEd
       ) : null}
       {state.success ? (
         <p role="status" className="text-xs font-medium text-nebula-aqua">
-          {t.submitReport.savedMessage}
+          {state.submitted ? t.admin.manage.entrySubmittedMessage : t.submitReport.savedMessage}
         </p>
       ) : null}
 
-      <Button type="submit" variant="outline" disabled={isPending}>
-        {isPending ? t.submitReport.saving : t.reviewWorkspace.saveCorrectionsAction}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" name="intent" value="save" variant="outline" disabled={isPending}>
+          {isPending ? t.submitReport.saving : t.reviewWorkspace.saveCorrectionsAction}
+        </Button>
+        {canSubmit ? (
+          <Button type="submit" name="intent" value="submit" disabled={isPending}>
+            {t.admin.manage.entrySubmitAction}
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }

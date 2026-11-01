@@ -1,10 +1,9 @@
 import "server-only";
-import type { Prisma, MetricDataType, SubmissionStatus } from "@/generated/prisma/client";
+import type { Prisma, MetricDataType } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { requireCompanyMembership, requireFalakRole } from "@/lib/auth/authorization";
+import { requireCompanyMembership } from "@/lib/auth/authorization";
 import { SUBMITTABLE_FROM_STATUSES } from "@/lib/reporting/submission-status";
 import { parseMetricDate } from "@/lib/reporting/metric-date";
-import { writeAuditEvent } from "@/lib/audit/write-audit-event";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 
 /**
@@ -165,10 +164,9 @@ export async function saveMetricValues(
 /**
  * The actual per-field validate-and-upsert loop, shared by
  * saveMetricValues (company member, draft/changes_requested only) and
- * adminUpdateSubmissionMetricValues below (Falak admin, submitted/
- * under_review only) -- the two callers differ only in who's allowed to
- * call them and which statuses are editable, never in how a raw value
- * actually gets validated and stored.
+ * saveEntry in entry-core.ts (Falak staff and emailed links) -- the callers
+ * differ only in who's allowed to call them and which statuses are
+ * editable, never in how a raw value actually gets validated and stored.
  */
 export async function writeMetricValues(
   tx: Prisma.TransactionClient,
@@ -194,67 +192,6 @@ export async function writeMetricValues(
       create: { submissionId, metricDefinitionId: field.metricDefinitionId, ...data },
     });
   }
-}
-
-const ADMIN_EDITABLE_STATUSES: SubmissionStatus[] = ["submitted", "under_review"];
-
-/**
- * Falak-admin counterpart to saveMetricValues -- lets staff correct a
- * company's reported values directly while a submission is under
- * review (submitted or under_review only; never draft/changes_requested,
- * which are the company's own editable window, and never approved/
- * published, which must stay an immutable historical record once
- * finalized). Always audited (unlike the company-member save path,
- * which is a draft-keystroke save, not a workflow transition) -- this
- * is Falak overwriting what the company itself reported, so it must
- * leave a trail.
- */
-export async function adminUpdateSubmissionMetricValues(
-  submissionId: string,
-  values: MetricValueInput[]
-): Promise<SaveMetricValuesResult> {
-  const { user } = await requireFalakRole("FALAK_ADMIN");
-
-  const submission = await db.companySubmission.findFirst({
-    where: { id: submissionId, cycle: { company: { archivedAt: null } } },
-    select: { id: true, status: true },
-  });
-  if (!submission) {
-    return { error: GENERIC_ERROR, success: false };
-  }
-  if (!ADMIN_EDITABLE_STATUSES.includes(submission.status)) {
-    return { error: LOCKED_ERROR, success: false };
-  }
-
-  const definitionsById = new Map(
-    (
-      await db.metricDefinition.findMany({
-        where: { id: { in: values.map((v) => v.metricDefinitionId) } },
-        select: { id: true, dataType: true },
-      })
-    ).map((d) => [d.id, d.dataType] as const)
-  );
-
-  const fieldErrors = invalidMetricFields(values, definitionsById);
-  if (Object.keys(fieldErrors).length > 0) {
-    return { error: FIX_FIELDS_ERROR, fieldErrors, success: false };
-  }
-
-  try {
-    await db.$transaction(async (tx) => {
-      await writeMetricValues(tx, submissionId, values, definitionsById);
-      await writeAuditEvent(tx, {
-        actorId: user.id,
-        action: "submission.values_corrected_by_staff",
-        targetType: "CompanySubmission",
-        targetId: submissionId,
-      });
-    });
-  } catch {
-    return { error: GENERIC_ERROR, success: false };
-  }
-
-  return { error: null, success: true };
 }
 
 const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";

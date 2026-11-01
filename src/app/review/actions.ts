@@ -10,7 +10,7 @@ import {
   resendReportToInvestors,
   type NarrativeInputs,
 } from "@/lib/reporting/publish-workflow";
-import { adminUpdateSubmissionMetricValues, fetchSubmissionMetricFields, type MetricValueInput } from "@/lib/reporting/metrics";
+import { fetchSubmissionMetricFields } from "@/lib/reporting/metrics";
 import {
   adminUploadSubmissionAttachment,
   listSubmissionAttachments,
@@ -198,42 +198,6 @@ export async function getSubmissionMetricsForReviewAction(submissionId: string):
   if (!submission) return [];
 
   return fetchSubmissionMetricFields(db, submission.id, submission.cycle.templateId);
-}
-
-export async function adminUpdateSubmissionMetricValuesAction(
-  _prevState: SaveMetricsActionState,
-  formData: FormData
-): Promise<SaveMetricsActionState> {
-  const submissionId = readSubmissionId(formData);
-  if (!submissionId) {
-    return { error: GENERIC_ERROR, success: false };
-  }
-
-  const values: MetricValueInput[] = [];
-  for (const key of formData.keys()) {
-    if (!key.startsWith("value_")) continue;
-    const metricDefinitionId = key.slice("value_".length);
-    const rawValue = formData.get(key);
-    values.push({
-      metricDefinitionId,
-      rawValue: typeof rawValue === "string" ? rawValue : "",
-      isNa: formData.get(`na_${metricDefinitionId}`) !== null,
-    });
-  }
-
-  try {
-    const result = await adminUpdateSubmissionMetricValues(submissionId, values);
-    if (!result.success) {
-      return { error: result.error, fieldErrors: result.fieldErrors, success: false };
-    }
-  } catch (error) {
-    if (isAuthError(error)) {
-      return { error: GENERIC_ACCESS_DENIED, success: false };
-    }
-    throw error;
-  }
-
-  return { error: null, success: true };
 }
 
 /**

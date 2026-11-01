@@ -62,7 +62,8 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
   const companyName = company ? (lang === "ar" ? company.nameAr : company.nameEn) : null;
   const submissionId = effectiveData?.submissionId ?? null;
 
-  const isEditableStatus = effectiveData?.status === "submitted" || effectiveData?.status === "under_review";
+  const isEditableStatus =
+    effectiveData?.status === "changes_requested" || effectiveData?.status === "submitted" || effectiveData?.status === "under_review";
   // Keyed by the submissionId the fetch was actually for -- lets the
   // render below ignore a stale result instead of needing a synchronous
   // setState([]) in the effect body (which react-hooks/set-state-in-effect
@@ -84,7 +85,7 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
 
   const metrics = isEditableStatus && metricsResult?.submissionId === submissionId ? metricsResult.metrics : [];
 
-  // Unlike metrics (editable only during submitted/under_review),
+  // Unlike metrics (editable only during changes_requested/submitted/under_review),
   // attachments are visible and uploadable at any review stage -- Falak
   // may need to attach a document before, during, or after the
   // company's own submission status changes.
@@ -174,8 +175,12 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
             ) : null}
           </div>
 
-          {isEditableStatus && metrics.length > 0 ? (
-            <ReviewMetricsEditForm submissionId={submissionId} metrics={metrics} />
+          {isEditableStatus && effectiveData.cycleId && metrics.length > 0 ? (
+            <ReviewMetricsEditForm
+              cycleId={effectiveData.cycleId}
+              canSubmit={effectiveData.status === "changes_requested"}
+              metrics={metrics}
+            />
           ) : null}
 
           <ReviewAttachmentsPanel submissionId={submissionId} attachments={attachments} />
@@ -278,7 +283,7 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
               </form>
             ) : null}
 
-            {effectiveData.status === "draft" || effectiveData.status === "changes_requested" ? (
+            {effectiveData.status === "draft" ? (
               <p className="text-sm text-muted-foreground">{t.reviewWorkspace.noActionAvailable}</p>
             ) : null}
           </div>

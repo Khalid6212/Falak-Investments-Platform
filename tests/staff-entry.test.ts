@@ -113,6 +113,27 @@ test("staff entry: an invalid number is highlighted and nothing is written", asy
   assert.equal(upserts.length, 0);
 });
 
+test("staff entry: an investment professional can edit a changes-requested report and send it back to review", async () => {
+  setCurrentUser(REAL_USER);
+  const { stub, upserts, statusUpdates, workflowEvents } = makeStub({
+    falakRoles: [{ role: "FALAK_OPERATIONS" }],
+    status: "changes_requested",
+    answered: [{ metricDefinitionId: "m_revenue", isNa: false, numericValue: "250000", textValue: null }],
+  });
+  setDbStub(stub);
+
+  const saved = await staffSaveCycleValues("cy_1", [REVENUE], false);
+  assert.deepEqual(saved, { error: null, success: true, submitted: false });
+  assert.equal(upserts.length, 1);
+  assert.equal(statusUpdates.length, 0);
+
+  const submitted = await staffSaveCycleValues("cy_1", [REVENUE], true);
+  assert.deepEqual(submitted, { error: null, success: true, submitted: true });
+  assert.equal(statusUpdates.length, 1);
+  assert.equal(workflowEvents[0].fromStatus, "changes_requested");
+  assert.equal(workflowEvents[0].toStatus, "submitted");
+});
+
 test("staff entry: a submitted report can be corrected but is not re-submitted", async () => {
   setCurrentUser(REAL_USER);
   const { stub, upserts, statusUpdates } = makeStub({ status: "submitted" });
