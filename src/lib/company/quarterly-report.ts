@@ -98,6 +98,7 @@ export async function getQuarterlyReportData(slug: string, periodKey: string): P
       archivedAt: true,
       department: true,
       cycles: {
+        where: { archivedAt: null },
         orderBy: { periodStart: "asc" },
         select: {
           id: true,

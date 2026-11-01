@@ -152,7 +152,7 @@ export async function getCurrentSubmissionForCompanyMember(companyId: string): P
   await requireCompanyMembership(companyId, "MEMBER");
 
   const submission = await db.companySubmission.findFirst({
-    where: { cycle: { companyId } },
+    where: { cycle: { companyId, archivedAt: null } },
     orderBy: { cycle: { periodStart: "desc" } },
     select: SUBMISSION_SELECT,
   });
@@ -208,7 +208,7 @@ export async function submitCompanySubmission(companyId: string, submissionId: s
     // everything itself, independently, and would fail safely even if
     // this read were somehow stale.
     const submission = await tx.companySubmission.findFirst({
-      where: { id: submissionId, cycle: { companyId } },
+      where: { id: submissionId, cycle: { companyId, archivedAt: null } },
       select: SUBMISSION_SELECT,
     });
 
@@ -227,7 +227,7 @@ export async function submitCompanySubmission(companyId: string, submissionId: s
     const claim = await tx.companySubmission.updateMany({
       where: {
         id: submissionId,
-        cycle: { companyId, company: { archivedAt: null } },
+        cycle: { companyId, archivedAt: null, company: { archivedAt: null } },
         status: submission.status,
       },
       data: { status: "submitted", submittedById: user.id },
@@ -276,7 +276,7 @@ export async function listSubmissionsForFalakReview(): Promise<SubmissionDTO[]> 
   await requireFalakRole("FALAK_OPERATIONS");
 
   const submissions = await db.companySubmission.findMany({
-    where: { status: { not: "draft" } },
+    where: { status: { not: "draft" }, cycle: { archivedAt: null } },
     orderBy: { cycle: { periodStart: "desc" } },
     select: SUBMISSION_SELECT,
   });

@@ -156,6 +156,8 @@ function cellValue(cell: ExcelJS.Cell): string {
 }
 
 export interface ExistingCycleRef {
+  /** Archived: only a request for the same template and period is in the way, until it's restored. */
+  archived?: boolean;
   companyId: string;
   templateId: string;
   templateNameEn: string;
@@ -321,8 +323,10 @@ export async function parseReportImport(
       seen.add(dupKey);
       const samePeriod = cycles.filter((c) => c.companyId === company.id && sameDay(c.periodStart, periodStart!) && sameDay(c.periodEnd, periodEnd!));
       const mine = samePeriod.find((c) => c.templateId === template.id);
-      const other = samePeriod.find((c) => c.templateId !== template.id);
-      if (mine && !FILLABLE.includes(mine.status)) {
+      const other = samePeriod.find((c) => c.templateId !== template.id && !c.archived);
+      if (mine?.archived) {
+        problems.push("This request is archived; restore it under Archived Requests, or have an admin delete it; skipped.");
+      } else if (mine && !FILLABLE.includes(mine.status)) {
         problems.push(`Already has a report for this period that is ${STATUS_WORDS[mine.status!] ?? mine.status}; skipped.`);
       } else if (!mine && other) {
         problems.push(`Already has a report for this period under template "${other.templateNameEn}"; skipped.`);
@@ -330,7 +334,7 @@ export async function parseReportImport(
         // A cycle covering part of the same months under other dates (e.g. a
         // Q2 entered as 1 Mar - 30 Jun) would otherwise get a second report
         // for the same quarter.
-        const overlap = cycles.find((c) => c.companyId === company.id && c.periodStart <= periodEnd! && c.periodEnd >= periodStart!);
+        const overlap = cycles.find((c) => !c.archived && c.companyId === company.id && c.periodStart <= periodEnd! && c.periodEnd >= periodStart!);
         if (overlap) {
           problems.push(
             `Overlaps this startup's existing "${overlap.templateNameEn}" cycle for ${day(overlap.periodStart)} to ${day(overlap.periodEnd)}; skipped. Use the same dates as that cycle to fill it in, or correct its dates first.`

@@ -48,6 +48,7 @@ export async function getCompanyPerformanceTrends(companyIds?: string[]): Promis
       nameAr: true,
       currency: true,
       cycles: {
+        where: { archivedAt: null },
         orderBy: { periodStart: "asc" },
         select: {
           periodLabel: true,

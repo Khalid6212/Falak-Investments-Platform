@@ -44,7 +44,7 @@ export async function getAdminPortfolioData(): Promise<AdminPortfolioData> {
       select: { companyId: true, vehicleId: true },
     }),
     db.reportingCycle.findMany({
-      where: { company: liveWhere },
+      where: { archivedAt: null, company: liveWhere },
       select: {
         id: true,
         companyId: true,

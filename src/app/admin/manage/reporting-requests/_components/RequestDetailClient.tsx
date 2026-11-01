@@ -13,6 +13,7 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatDate } from "@/lib/format";
 import { resendCycleRequestAction, setRequestRemindersAction, setRequestStatementsAction } from "@/app/admin/actions";
 import { ReminderSettingsFields } from "../../_components/ReminderSettingsFields";
+import { CycleRemoveControls } from "../../_components/CycleRemoveControls";
 import { Input } from "@/components/ui/Input";
 import { initialActionState, FormMessage } from "../../_components/shared";
 import type { ReportingRequestDetail, RequestStartupRow } from "@/lib/admin/reporting-request-detail";
@@ -38,7 +39,7 @@ function dateTime(iso: string, lang: "en" | "ar"): string {
   return `${formatDate(iso.slice(0, 10), lang)} ${time}`;
 }
 
-function StartupRow({ row, fieldCount }: { row: RequestStartupRow; fieldCount: number }) {
+function StartupRow({ row, fieldCount, canDelete }: { row: RequestStartupRow; fieldCount: number; canDelete: boolean }) {
   const { t, lang } = useLanguage();
   const m = t.admin.manage;
   const [showEmails, setShowEmails] = useState(false);
@@ -105,6 +106,7 @@ function StartupRow({ row, fieldCount }: { row: RequestStartupRow; fieldCount: n
                 </Button>
               </form>
             ) : null}
+            <CycleRemoveControls cycleId={row.cycleId} companyNameEn={row.companyNameEn} canDelete={canDelete} />
           </div>
           {resend.state.error ? <p role="alert" className="mt-1 max-w-[14rem] text-xs font-semibold text-danger">{resend.state.error}</p> : null}
           {resend.state.success && resend.state.notice ? (
@@ -199,7 +201,7 @@ function StatementsAskForm({ detail }: { detail: ReportingRequestDetail }) {
   );
 }
 
-export function RequestDetailClient({ detail }: { detail: ReportingRequestDetail }) {
+export function RequestDetailClient({ detail, canDelete }: { detail: ReportingRequestDetail; canDelete: boolean }) {
   const { t, lang } = useLanguage();
   const m = t.admin.manage;
   const name = (r: RequestStartupRow) => (lang === "ar" ? r.companyNameAr : r.companyNameEn);
@@ -249,7 +251,7 @@ export function RequestDetailClient({ detail }: { detail: ReportingRequestDetail
         </THead>
         <TBody>
           {visible.map((row) => (
-            <StartupRow key={row.cycleId} row={row} fieldCount={detail.fieldCount} />
+            <StartupRow key={row.cycleId} row={row} fieldCount={detail.fieldCount} canDelete={canDelete} />
           ))}
         </TBody>
       </Table>

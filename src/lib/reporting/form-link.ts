@@ -146,6 +146,7 @@ async function findLink(rawToken: string) {
           periodLabel: true,
           currentDeadline: true,
           statementsYear: true,
+          archivedAt: true,
           company: { select: { nameEn: true, nameAr: true, currency: true, archivedAt: true, deletedAt: true } },
           submission: { select: { id: true, status: true } },
         },
@@ -153,7 +154,7 @@ async function findLink(rawToken: string) {
     },
   });
   if (!link || link.revokedAt || link.expiresAt < new Date()) return null;
-  if (link.cycle.company.archivedAt || link.cycle.company.deletedAt) return null;
+  if (link.cycle.archivedAt || link.cycle.company.archivedAt || link.cycle.company.deletedAt) return null;
   return link;
 }
 

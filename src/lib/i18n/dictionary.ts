@@ -279,6 +279,9 @@ export interface Dictionary {
       sentRequestsTitle: string;
       sentRequestsHint: string;
       addCompaniesAction: string;
+      archivedRequestsTitle: string;
+      archivedRequestsHint: string;
+      deleteCycleWarning: string;
       alreadySentLabel: string;
       cancelAction: string;
       newRequestHint: string;
@@ -1135,6 +1138,9 @@ export const en = {
       sentRequestsTitle: "Requests Already Sent",
       sentRequestsHint: "Use \"Add Companies\" to send the same template and period to more startups.",
       addCompaniesAction: "Add Companies",
+      archivedRequestsTitle: "Archived Requests",
+      archivedRequestsHint: "Archived requests are hidden everywhere: no reminders, and the startup's form link stops working. Restore one to bring it back as it was.",
+      deleteCycleWarning: "This removes this startup's request and any figures entered for it from the platform. It can't be restored from here.",
       alreadySentLabel: "already sent",
       cancelAction: "Cancel",
       newRequestHint: "Choose the startups, template, period and deadline for a new reporting request.",
@@ -1997,6 +2003,9 @@ export const ar = {
       sentRequestsTitle: "الطلبات المرسلة",
       sentRequestsHint: "استخدم \"إضافة شركات\" لإرسال نفس القالب والفترة إلى شركات ناشئة أخرى.",
       addCompaniesAction: "إضافة شركات",
+      archivedRequestsTitle: "الطلبات المؤرشفة",
+      archivedRequestsHint: "الطلبات المؤرشفة مخفية في كل مكان: لا تذكيرات، ويتوقف رابط النموذج المرسل للشركة عن العمل. استعد الطلب لإعادته كما كان.",
+      deleteCycleWarning: "يؤدي هذا إلى إزالة طلب هذه الشركة وأي أرقام أُدخلت له من المنصة. ولا يمكن استعادته من هنا.",
       alreadySentLabel: "أُرسل مسبقاً",
       cancelAction: "إلغاء",
       newRequestHint: "اختر الشركات الناشئة والقالب والفترة والموعد النهائي لطلب تقارير جديد.",

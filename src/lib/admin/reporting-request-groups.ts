@@ -3,6 +3,22 @@ import { db } from "@/lib/db";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import type { ReminderSettings } from "@/lib/reporting/reminder-schedule";
 
+export interface ReportingRequestCycleRef {
+  cycleId: string;
+  companyId: string;
+  companyNameEn: string;
+}
+
+export interface ArchivedReportingCycle {
+  cycleId: string;
+  companyNameEn: string;
+  companyNameAr: string;
+  templateNameEn: string;
+  templateNameAr: string;
+  periodLabel: string;
+  archivedAt: string;
+}
+
 export interface ReportingRequestGroup {
   key: string;
   templateId: string;
@@ -18,6 +34,7 @@ export interface ReportingRequestGroup {
   /** Startups added to the request get these reminder settings. */
   reminders: ReminderSettings;
   companyIds: string[];
+  cycles: ReportingRequestCycleRef[];
 }
 
 function toDateOnly(date: Date): string {
@@ -35,11 +52,14 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
 
   const cycles = await db.reportingCycle.findMany({
     where: {
+      archivedAt: null,
       company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
     },
     orderBy: { periodStart: "desc" },
     select: {
+      id: true,
       companyId: true,
+      company: { select: { nameEn: true } },
       templateId: true,
       periodLabel: true,
       periodStart: true,
@@ -78,11 +98,42 @@ export async function getReportingRequestGroups(): Promise<ReportingRequestGroup
         overdueForDays: c.overdueForDays,
       },
       companyIds: [],
+      cycles: [],
     };
     group.statementsYear ??= c.statementsYear;
     if (toDateOnly(c.originalDeadline) < group.deadline) group.deadline = toDateOnly(c.originalDeadline);
     group.companyIds.push(c.companyId);
+    group.cycles.push({ cycleId: c.id, companyId: c.companyId, companyNameEn: c.company.nameEn });
     groups.set(key, group);
   }
   return [...groups.values()];
+}
+
+/** Archived (not deleted) startup requests, to restore or delete. Department-scoped. */
+export async function getArchivedReportingCycles(): Promise<ArchivedReportingCycle[]> {
+  const { departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
+  const cycles = await db.reportingCycle.findMany({
+    where: {
+      archivedAt: { not: null },
+      deletedAt: null,
+      company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
+    },
+    orderBy: { archivedAt: "desc" },
+    select: {
+      id: true,
+      periodLabel: true,
+      archivedAt: true,
+      company: { select: { nameEn: true, nameAr: true } },
+      template: { select: { nameEn: true, nameAr: true } },
+    },
+  });
+  return cycles.map((c) => ({
+    cycleId: c.id,
+    companyNameEn: c.company.nameEn,
+    companyNameAr: c.company.nameAr,
+    templateNameEn: c.template.nameEn,
+    templateNameAr: c.template.nameAr,
+    periodLabel: c.periodLabel,
+    archivedAt: c.archivedAt!.toISOString().slice(0, 10),
+  }));
 }

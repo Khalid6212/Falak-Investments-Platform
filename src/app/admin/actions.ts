@@ -966,7 +966,7 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
     await db.$transaction(async (tx) => {
       for (const companyId of companyIds) {
         const existing = await tx.reportingCycle.findUnique({
-          where: { companyId_templateId_periodStart_periodEnd: { companyId, templateId, periodStart, periodEnd } },
+          where: { companyId_templateId_periodStart_periodEnd_deletedKey: { companyId, templateId, periodStart, periodEnd, deletedKey: "" } },
         });
         if (existing) continue;
 
@@ -999,7 +999,7 @@ export async function createReportingCycleAction(_prevState: ActionState, formDa
   }
 
   if (created.length === 0) {
-    const message = "Every selected startup already has this template for this period.";
+    const message = "Every selected startup already has this template for this period. If it was archived, restore it under Archived Requests.";
     return { error: message, fieldErrors: { companyIds: message } };
   }
 
@@ -1038,6 +1038,7 @@ export async function resendReportRequestAction(_prevState: ActionState, formDat
       templateId,
       periodStart: new Date(periodStartRaw!),
       periodEnd: new Date(periodEndRaw!),
+      archivedAt: null,
       company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
       submission: { status: { in: ["draft", "changes_requested"] } },
     },
@@ -1124,6 +1125,7 @@ export async function setRequestRemindersAction(_prevState: ActionState, formDat
           templateId,
           periodStart: new Date(periodStartRaw!),
           periodEnd: new Date(periodEndRaw!),
+          archivedAt: null,
           company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
         },
         select: { id: true },
@@ -1179,6 +1181,7 @@ export async function setRequestStatementsAction(_prevState: ActionState, formDa
           templateId,
           periodStart: new Date(periodStartRaw!),
           periodEnd,
+          archivedAt: null,
           company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
         },
         select: { id: true },
@@ -1212,7 +1215,7 @@ export async function resendCycleRequestAction(_prevState: ActionState, formData
   const cycleId = readString(formData, "cycleId");
   if (!cycleId) return { error: GENERIC_ERROR };
   const cycle = await db.reportingCycle.findFirst({
-    where: { id: cycleId, company: { archivedAt: null } },
+    where: { id: cycleId, archivedAt: null, company: { archivedAt: null } },
     select: {
       id: true,
       companyId: true,
@@ -1848,6 +1851,123 @@ export async function deleteCompanyAction(_prevState: ActionState, formData: For
     return { error: GENERIC_ERROR };
   }
   redirect("/admin/manage/new-company");
+}
+
+// ============================================================
+// Archiving or deleting one startup's reporting cycle
+// ============================================================
+
+const PUBLISHED_CYCLE_ERROR = "This report has been published to investors, so it can't be archived or deleted.";
+
+/** Reads the cycle an archive/restore/delete names; published reports stay. */
+async function loadCycleForRemoval(cycleId: string) {
+  const cycle = await db.reportingCycle.findUnique({
+    where: { id: cycleId },
+    select: {
+      id: true,
+      companyId: true,
+      periodStart: true,
+      periodEnd: true,
+      archivedAt: true,
+      deletedAt: true,
+      company: { select: { nameEn: true, department: true } },
+    },
+  });
+  if (!cycle || cycle.deletedAt) return null;
+  const published = await db.report.findFirst({
+    where: {
+      scope: "COMPANY",
+      companyId: cycle.companyId,
+      periodStart: cycle.periodStart,
+      periodEnd: cycle.periodEnd,
+      versions: { some: { isSuperseded: false } },
+    },
+    select: { id: true },
+  });
+  return { cycle, published: published !== null };
+}
+
+/** Archives (or, with restore, brings back) one startup's cycle. Staff, in their department. */
+async function setCycleArchived(formData: FormData, archive: boolean): Promise<ActionState> {
+  let user;
+  let departments: Department[] | null = null;
+  try {
+    ({ user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+
+  const cycleId = readString(formData, "cycleId");
+  if (!cycleId) return { error: GENERIC_ERROR };
+  const loaded = await loadCycleForRemoval(cycleId);
+  if (!loaded) return { error: GENERIC_ERROR };
+  if (!inDepartment(departments, loaded.cycle.company.department)) return { error: OUT_OF_DEPARTMENT };
+  if (archive && loaded.published) return { error: PUBLISHED_CYCLE_ERROR };
+
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.reportingCycle.update({ where: { id: cycleId }, data: { archivedAt: archive ? new Date() : null } });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: archive ? "reporting_cycle.archived" : "reporting_cycle.restored",
+        targetType: "ReportingCycle",
+        targetId: cycleId,
+      });
+    });
+  } catch (error) {
+    console.error("setCycleArchived failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
+export async function archiveReportingCycleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  return setCycleArchived(formData, true);
+}
+
+export async function restoreReportingCycleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  return setCycleArchived(formData, false);
+}
+
+/** Deletes one startup's cycle, confirmed by typing the startup's name. Admin only. */
+export async function deleteReportingCycleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  try {
+    ({ user } = await requireFalakRole("FALAK_ADMIN"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+
+  const cycleId = readString(formData, "cycleId");
+  if (!cycleId) return { error: GENERIC_ERROR };
+  const loaded = await loadCycleForRemoval(cycleId);
+  if (!loaded) return { error: GENERIC_ERROR };
+  if (loaded.published) return { error: PUBLISHED_CYCLE_ERROR };
+  if (readString(formData, "confirmName") !== loaded.cycle.company.nameEn.trim()) {
+    return { error: CONFIRM_NAME_MISMATCH, fieldErrors: { confirmName: CONFIRM_NAME_MISMATCH } };
+  }
+
+  const now = new Date();
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.reportingCycle.update({
+        where: { id: cycleId },
+        data: { deletedAt: now, archivedAt: loaded.cycle.archivedAt ?? now, deletedKey: cycleId },
+      });
+      await writeAuditEvent(tx, {
+        actorId: user.id,
+        action: "reporting_cycle.deleted",
+        targetType: "ReportingCycle",
+        targetId: cycleId,
+      });
+    });
+  } catch (error) {
+    console.error("deleteReportingCycleAction failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
 }
 
 // ============================================================

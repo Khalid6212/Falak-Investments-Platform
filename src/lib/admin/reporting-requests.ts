@@ -66,6 +66,7 @@ export async function getReportingRequests(companyIds?: string[]): Promise<Repor
 
   const cycles = await db.reportingCycle.findMany({
     where: {
+      archivedAt: null,
       company: { archivedAt: null, ...(scope.departments ? { department: { in: scope.departments } } : {}) },
       ...(companyIds ? { companyId: { in: companyIds } } : {}),
     },

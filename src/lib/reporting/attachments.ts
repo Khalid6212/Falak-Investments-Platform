@@ -41,7 +41,7 @@ export async function adminUploadSubmissionAttachment(
   const { user } = await requireFalakRole("FALAK_OPERATIONS");
 
   const submission = await db.companySubmission.findFirst({
-    where: { id: submissionId, cycle: { company: { archivedAt: null } } },
+    where: { id: submissionId, cycle: { archivedAt: null, company: { archivedAt: null } } },
     select: { id: true },
   });
   if (!submission) {

@@ -79,6 +79,7 @@ async function companyRows(deptWhere: object) {
       },
       valuations: { orderBy: { asOfDate: "desc" }, take: 1 },
       cycles: {
+        where: { archivedAt: null },
         orderBy: { periodStart: "desc" },
         select: {
           periodLabel: true,

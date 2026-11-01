@@ -32,13 +32,14 @@ export async function loadImportCompanies(departments: Department[] | null) {
 /** Every existing cycle of these startups (any template), to catch periods already reported. */
 export async function loadImportCycles(companyIds: string[]): Promise<ExistingCycleRef[]> {
   const cycles = await db.reportingCycle.findMany({
-    where: { companyId: { in: companyIds } },
+    where: { companyId: { in: companyIds }, deletedAt: null },
     select: {
       id: true,
       companyId: true,
       templateId: true,
       periodStart: true,
       periodEnd: true,
+      archivedAt: true,
       template: { select: { nameEn: true } },
       submission: { select: { id: true, status: true } },
     },
@@ -52,5 +53,6 @@ export async function loadImportCycles(companyIds: string[]): Promise<ExistingCy
     cycleId: c.id,
     submissionId: c.submission?.id ?? null,
     status: c.submission?.status ?? null,
+    archived: c.archivedAt !== null,
   }));
 }

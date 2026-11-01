@@ -58,6 +58,7 @@ export async function getPortfolioAlerts(companyIds?: string[]): Promise<Portfol
       nameEn: true,
       nameAr: true,
       cycles: {
+        where: { archivedAt: null },
         orderBy: { periodStart: "asc" },
         select: {
           templateId: true,

@@ -53,7 +53,7 @@ export async function getPortfolioBenchmarks(periodLabel: string): Promise<Compa
       nameEn: true,
       nameAr: true,
       cycles: {
-        where: { periodLabel },
+        where: { periodLabel, archivedAt: null },
         select: { templateId: true, submission: { select: { id: true } } },
       },
     },

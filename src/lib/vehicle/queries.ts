@@ -103,6 +103,7 @@ export async function getVehicleDashboardData(slug: string): Promise<VehicleDash
               entryStage: true,
               currentStage: true,
               cycles: {
+                where: { archivedAt: null },
                 select: {
                   periodLabel: true,
                   periodStart: true,

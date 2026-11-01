@@ -47,7 +47,7 @@ export async function startReview(submissionId: string): Promise<void> {
 
   await db.$transaction(async (tx) => {
     const claim = await tx.companySubmission.updateMany({
-      where: { id: submissionId, status: "submitted", cycle: { company: { archivedAt: null, ...departmentWhere } } },
+      where: { id: submissionId, status: "submitted", cycle: { archivedAt: null, company: { archivedAt: null, ...departmentWhere } } },
       data: { status: "under_review" },
     });
     if (claim.count !== 1) {
@@ -84,7 +84,7 @@ export async function requestChanges(submissionId: string, comment: string): Pro
 
   await db.$transaction(async (tx) => {
     const claim = await tx.companySubmission.updateMany({
-      where: { id: submissionId, status: "under_review", cycle: { company: { archivedAt: null, ...departmentWhere } } },
+      where: { id: submissionId, status: "under_review", cycle: { archivedAt: null, company: { archivedAt: null, ...departmentWhere } } },
       data: { status: "changes_requested" },
     });
     if (claim.count !== 1) {
@@ -128,7 +128,7 @@ export async function approveSubmission(submissionId: string): Promise<void> {
 
   await db.$transaction(async (tx) => {
     const claim = await tx.companySubmission.updateMany({
-      where: { id: submissionId, status: "under_review", cycle: { company: { archivedAt: null, ...departmentWhere } } },
+      where: { id: submissionId, status: "under_review", cycle: { archivedAt: null, company: { archivedAt: null, ...departmentWhere } } },
       data: { status: "approved" },
     });
     if (claim.count !== 1) {

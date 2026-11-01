@@ -160,7 +160,7 @@ export async function getPortfolioOverviewData(): Promise<PortfolioOverviewRaw> 
       select: { vehicleId: true, investorId: true },
     }),
     db.reportingCycle.findMany({
-      where: { company: { archivedAt: null, ...companyDeptWhere } },
+      where: { archivedAt: null, company: { archivedAt: null, ...companyDeptWhere } },
       select: {
         companyId: true,
         periodLabel: true,

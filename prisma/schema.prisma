@@ -822,6 +822,12 @@ model ReportingCycle {
   // deliberately just "what's the latest state" for dedup purposes.
   lastReminderSentAt DateTime?
   lastReminderKind   String?
+  // Archived: hidden from every list, form and reminder; can be restored.
+  // Deleted (Admin): also archived, for good. deletedKey is "" until then,
+  // when it takes the cycle's id, so the same request can be sent again.
+  archivedAt         DateTime?
+  deletedAt          DateTime?
+  deletedKey         String    @default("")
 
   obligationCoverage ReportingCycleObligation[]
   deadlineExtensions ReportingCycleDeadlineExtension[]
@@ -829,7 +835,7 @@ model ReportingCycle {
   formLinks          ReportFormLink[]
   submission         CompanySubmission?
 
-  @@unique([companyId, templateId, periodStart, periodEnd])
+  @@unique([companyId, templateId, periodStart, periodEnd, deletedKey])
   @@map("reporting_cycles")
 }
 

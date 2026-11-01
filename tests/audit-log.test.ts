@@ -622,8 +622,8 @@ test("createReportingCycleAction creates one cycle per selected company, skippin
     falakRoles: ADMIN_ROLE,
     models: {
       reportingCycle: {
-        findUnique: async ({ where }: { where: { companyId_templateId_periodStart_periodEnd: { companyId: string } } }) =>
-          where.companyId_templateId_periodStart_periodEnd.companyId === "co_2" ? { id: "existing_cycle" } : null,
+        findUnique: async ({ where }: { where: { companyId_templateId_periodStart_periodEnd_deletedKey: { companyId: string } } }) =>
+          where.companyId_templateId_periodStart_periodEnd_deletedKey.companyId === "co_2" ? { id: "existing_cycle" } : null,
         create: async ({ data }: { data: Record<string, unknown> }) => {
           createCalls += 1;
           return { id: `cycle_${createCalls}`, ...data };

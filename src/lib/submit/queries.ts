@@ -29,6 +29,7 @@ export async function getMyCompaniesData(): Promise<MyCompanyDTO[]> {
           nameEn: true,
           nameAr: true,
           cycles: {
+            where: { archivedAt: null },
             orderBy: { periodStart: "desc" },
             take: 1,
             select: { periodLabel: true, currentDeadline: true, submission: { select: { status: true } } },

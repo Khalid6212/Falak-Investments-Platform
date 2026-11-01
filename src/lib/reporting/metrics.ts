@@ -123,7 +123,7 @@ export async function saveMetricValues(
   await requireCompanyMembership(companyId, "MEMBER");
 
   const submission = await db.companySubmission.findFirst({
-    where: { id: submissionId, cycle: { companyId, company: { archivedAt: null } } },
+    where: { id: submissionId, cycle: { companyId, archivedAt: null, company: { archivedAt: null } } },
     select: { id: true, status: true },
   });
   if (!submission) {

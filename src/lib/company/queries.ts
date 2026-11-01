@@ -91,6 +91,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
       archivedAt: true,
       department: true,
       cycles: {
+        where: { archivedAt: null },
         select: {
           id: true,
           templateId: true,

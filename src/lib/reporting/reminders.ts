@@ -34,6 +34,7 @@ export async function sendDueReminders(now: Date = new Date()): Promise<Reminder
   const cycles = await db.reportingCycle.findMany({
     where: {
       status: "Open",
+      archivedAt: null,
       remindersEnabled: true,
       company: { archivedAt: null },
       OR: [{ submission: null }, { submission: { status: { in: ["draft", "changes_requested"] } } }],

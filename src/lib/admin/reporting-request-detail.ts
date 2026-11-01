@@ -75,6 +75,7 @@ export async function getReportingRequestDetail(
       templateId,
       periodStart: start,
       periodEnd: end,
+      archivedAt: null,
       company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
     },
     select: {

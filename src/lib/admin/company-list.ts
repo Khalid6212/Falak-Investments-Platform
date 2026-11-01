@@ -86,6 +86,7 @@ export async function getCompanyListData(): Promise<CompanyListRow[]> {
         },
       },
       cycles: {
+        where: { archivedAt: null },
         orderBy: { periodStart: "desc" },
         select: {
           periodLabel: true,

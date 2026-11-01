@@ -10,21 +10,26 @@ import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/format";
 import { createReportingCycleAction } from "../../actions";
 import { ResendRequestButton } from "./ResendRequestButton";
+import { CycleRemoveControls, RestoreCycleButton } from "./CycleRemoveControls";
 import { ReminderSettingsFields } from "./ReminderSettingsFields";
 import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reporting/reminder-schedule";
 import { useListView, byText, byValue } from "@/components/lists/useListView";
 import { labelClass, fieldClass, initialActionState, FormMessage } from "./shared";
 import type { AdminCompanyDTO, AdminReportingTemplateDTO } from "@/lib/admin/dto";
-import type { ReportingRequestGroup } from "@/lib/admin/reporting-request-groups";
+import type { ArchivedReportingCycle, ReportingRequestGroup } from "@/lib/admin/reporting-request-groups";
 
 export function CreateReportingCycleForm({
   companies,
   templates,
   groups,
+  archived,
+  canDelete,
 }: {
   companies: AdminCompanyDTO[];
   templates: AdminReportingTemplateDTO[];
   groups: ReportingRequestGroup[];
+  archived: ArchivedReportingCycle[];
+  canDelete: boolean;
 }) {
   const { t, lang } = useLanguage();
   const { state, isPending, errorFor, formProps } = useForm(createReportingCycleAction, initialActionState);
@@ -256,6 +261,34 @@ export function CreateReportingCycleForm({
                     {t.admin.manage.addCompaniesAction}
                   </Button>
                   <ResendRequestButton templateId={g.templateId} periodStart={g.periodStart} periodEnd={g.periodEnd} />
+                  {g.cycles.length === 1 ? (
+                    <CycleRemoveControls cycleId={g.cycles[0].cycleId} companyNameEn={g.cycles[0].companyNameEn} canDelete={canDelete} />
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {archived.length > 0 ? (
+        <section className="flex flex-col gap-2">
+          <h4 className="text-xs font-semibold text-muted-foreground">{t.admin.manage.archivedRequestsTitle}</h4>
+          <p className="text-xs text-muted-foreground">{t.admin.manage.archivedRequestsHint}</p>
+          <ul className="chamfer-br-md divide-y divide-border-subtle shadow-[var(--inner-line)]">
+            {archived.map((c) => (
+              <li key={c.cycleId} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {c.periodLabel} · {lang === "ar" ? c.templateNameAr : c.templateNameEn}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "ar" ? c.companyNameAr : c.companyNameEn} · {formatDate(c.archivedAt, lang)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-start gap-2">
+                  <RestoreCycleButton cycleId={c.cycleId} />
+                  <CycleRemoveControls cycleId={c.cycleId} companyNameEn={c.companyNameEn} canDelete={canDelete} archived />
                 </div>
               </li>
             ))}

@@ -118,13 +118,14 @@ export async function publishSubmission(submissionId: string, narratives: Narrat
             periodLabel: true,
             periodStart: true,
             periodEnd: true,
+            archivedAt: true,
             company: { select: { archivedAt: true, slug: true, nameEn: true } },
           },
         },
       },
     });
 
-    if (!submission || submission.status !== "approved" || submission.cycle.company.archivedAt) {
+    if (!submission || submission.status !== "approved" || submission.cycle.archivedAt || submission.cycle.company.archivedAt) {
       throw new InvalidTransitionError();
     }
 

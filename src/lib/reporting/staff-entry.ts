@@ -44,7 +44,7 @@ function toDateOnly(date: Date): string {
 async function loadCycle(cycleId: string) {
   const { user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
   const cycle = await db.reportingCycle.findFirst({
-    where: { id: cycleId, company: { archivedAt: null } },
+    where: { id: cycleId, archivedAt: null, company: { archivedAt: null } },
     select: {
       id: true,
       templateId: true,
