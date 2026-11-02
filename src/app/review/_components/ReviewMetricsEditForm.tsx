@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { isIsoDay } from "@/lib/reporting/metric-date";
 import { useForm } from "@/components/forms/useForm";
 import { Input } from "@/components/ui/Input";
@@ -56,6 +56,7 @@ function MetricField({
   const label = lang === "ar" ? field.labelAr : field.labelEn;
   const inputName = `value_${field.metricDefinitionId}`;
   const naName = `na_${field.metricDefinitionId}`;
+  const [isNa, setIsNa] = useState(field.isNa);
 
   return (
     <div className="flex flex-col gap-1">
@@ -64,9 +65,9 @@ function MetricField({
         {field.required ? " *" : ""}
       </label>
       {field.dataType === "Text" ? (
-        <Textarea id={inputName} name={inputName} defaultValue={field.value ?? ""} disabled={field.isNa} rows={3} />
+        <Textarea id={inputName} name={inputName} defaultValue={field.value ?? ""} disabled={isNa} rows={3} />
       ) : field.dataType === "Boolean" ? (
-        <Select id={inputName} name={inputName} defaultValue={field.value ?? ""} disabled={field.isNa}>
+        <Select id={inputName} name={inputName} defaultValue={field.value ?? ""} disabled={isNa}>
           <option value="" disabled>
             --
           </option>
@@ -81,13 +82,15 @@ function MetricField({
           type={field.value && !isIsoDay(field.value) ? "text" : "date"}
           placeholder="31/12/2026"
           defaultValue={field.value ?? ""}
-          disabled={field.isNa}
+          disabled={isNa}
         />
       ) : (
-        <Input id={inputName} name={inputName} type="text" defaultValue={field.value ?? ""} disabled={field.isNa} />
+        <Input id={inputName} name={inputName} type="text" defaultValue={field.value ?? ""} disabled={isNa} />
       )}
+      {/* A disabled input isn't submitted; the field must still reach the save. */}
+      {isNa ? <input type="hidden" name={inputName} value="" /> : null}
       <label className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground">
-        <input type="checkbox" name={naName} defaultChecked={field.isNa} />
+        <input type="checkbox" name={naName} checked={isNa} onChange={(e) => setIsNa(e.target.checked)} />
         {naLabel}
       </label>
       {error}

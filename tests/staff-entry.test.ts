@@ -134,6 +134,25 @@ test("staff entry: an investment professional can edit a changes-requested repor
   assert.equal(workflowEvents[0].toStatus, "submitted");
 });
 
+test("staff entry: a field saved as N/A can be given a real value, and a value can become N/A", async () => {
+  setCurrentUser(REAL_USER);
+  const { stub, upserts } = makeStub({ status: "changes_requested" });
+  setDbStub(stub);
+  const result = await staffSaveCycleValues(
+    "cy_1",
+    [
+      { metricDefinitionId: "m_revenue", rawValue: "250,000", isNa: false },
+      { metricDefinitionId: "m_notes", rawValue: "", isNa: true },
+    ],
+    false
+  );
+  assert.equal(result.success, true);
+  assert.equal(upserts[0].isNa, false);
+  assert.equal(String(upserts[0].numericValue), "250000");
+  assert.equal(upserts[1].isNa, true);
+  assert.equal(upserts[1].textValue, null);
+});
+
 test("staff entry: a submitted report can be corrected but is not re-submitted", async () => {
   setCurrentUser(REAL_USER);
   const { stub, upserts, statusUpdates } = makeStub({ status: "submitted" });
