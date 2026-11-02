@@ -2137,17 +2137,19 @@ export function makeVehicleNavDbStub(options: {
 /** Backs getVehicleCapitalOverview (src/lib/vehicle/cap-table.ts). */
 export function makeVehicleCapTableDbStub(options: {
   falakRoles?: FalakRoleFixture[];
-  agreements?: { vehicleId: string; investedAmount: number | null; currency: string | null }[];
+  agreements?: { vehicleId: string; investedAmount: number | null; currency: string | null; companyId?: string }[];
   positions?: {
     vehicleId: string;
     investor: { id: string; nameEn: string; nameAr: string };
     commitmentAmount: number | null;
     ownershipPct: number | null;
     currency: string;
+    exposures?: { companyId: string; investedAmount: number | null; currency: string | null }[];
   }[];
   fees?: { vehicleId: string; investorId: string; amount: number; currency: string }[];
 }) {
   const dec = (v: number | null) => (v === null ? null : { toNumber: () => v });
+  const company = (id: string) => ({ id, slug: id, nameEn: id, nameAr: id });
   return {
     userRoleAssignment: {
       findMany: async ({ where }: { where: Record<string, unknown> }) => {
@@ -2161,7 +2163,11 @@ export function makeVehicleCapTableDbStub(options: {
       findMany: async ({ where }: { where: { ownershipPosition: { vehicleId: string } } }) =>
         (options.agreements ?? [])
           .filter((a) => a.vehicleId === where.ownershipPosition.vehicleId)
-          .map((a) => ({ investedAmount: dec(a.investedAmount), currency: a.currency })),
+          .map((a) => ({
+            investedAmount: dec(a.investedAmount),
+            currency: a.currency,
+            ownershipPosition: { company: company(a.companyId ?? "co_1") },
+          })),
     },
     investorVehiclePosition: {
       findMany: async ({ where }: { where: { vehicleId: string } }) =>
@@ -2172,6 +2178,11 @@ export function makeVehicleCapTableDbStub(options: {
             ownershipPct: dec(p.ownershipPct),
             currency: p.currency,
             investor: p.investor,
+            startupExposures: (p.exposures ?? []).map((e) => ({
+              investedAmount: dec(e.investedAmount),
+              currency: e.currency,
+              company: company(e.companyId),
+            })),
           })),
     },
     investorCapitalTransaction: {

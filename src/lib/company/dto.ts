@@ -148,7 +148,9 @@ export interface CompanyReportData {
   valuations: CompanyValuationPointDTO[];
   /** Always [] for a company member. */
   investments: CompanyInvestmentDTO[];
-  /** Admin only: may correct or remove recorded investments. */
+  /** Falak staff: may edit a recorded investment's invested amount. */
+  canEditInvestedAmount: boolean;
+  /** Admin only: may also change its other terms, or remove it. */
   canManageInvestments: boolean;
   /** Always [] for a company member. */
   investorExposures: CompanyInvestorExposureDTO[];

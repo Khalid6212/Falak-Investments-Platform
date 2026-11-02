@@ -11,8 +11,11 @@ import type { CompanyInvestmentDTO } from "@/lib/company/dto";
 
 const initial: FormState = { error: null };
 
-/** Admin-only Correct / Remove for one recorded investment, shown under its row. */
-export function InvestmentRowActions({ investment }: { investment: CompanyInvestmentDTO }) {
+/**
+ * Actions for one recorded investment, shown under its row: staff can edit
+ * the invested amount; admins (canManage) can correct every term or remove it.
+ */
+export function InvestmentRowActions({ investment, canManage }: { investment: CompanyInvestmentDTO; canManage: boolean }) {
   const { t } = useLanguage();
   const p = t.companyProfile;
   const correct = useForm(correctInvestmentAction, initial, { resetOnSuccess: false });
@@ -26,8 +29,9 @@ export function InvestmentRowActions({ investment }: { investment: CompanyInvest
       <div className="flex flex-col items-start gap-1">
         <div className="flex gap-1">
           <Button type="button" variant="outline" size="xs" onClick={() => setOpenedWith(correct.state)}>
-            {p.correctAction}
+            {canManage ? p.correctAction : p.editAmountAction}
           </Button>
+          {canManage ? (
           <form
             {...remove.formProps}
             onSubmit={(e) => {
@@ -43,6 +47,7 @@ export function InvestmentRowActions({ investment }: { investment: CompanyInvest
               {p.removeAction}
             </Button>
           </form>
+          ) : null}
         </div>
         {remove.state.error ? <p role="alert" className="text-xs font-semibold text-danger">{remove.state.error}</p> : null}
       </div>
@@ -52,11 +57,13 @@ export function InvestmentRowActions({ investment }: { investment: CompanyInvest
   return (
     <form {...correct.formProps} className="flex flex-col gap-2 py-1">
       <input type="hidden" name="agreementId" value={investment.id} />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className={canManage ? "grid grid-cols-2 gap-2 sm:grid-cols-4" : "max-w-40"}>
         <div className="flex flex-col gap-0.5">
           <Input name="investedAmount" aria-label={p.amountColumn} inputMode="decimal" defaultValue={investment.investedAmount ?? ""} className="h-8 text-xs" />
           {correct.errorFor("investedAmount")}
         </div>
+        {canManage ? (
+        <>
         <div className="flex flex-col gap-0.5">
           <Select name="currency" aria-label={t.admin.filters.currencyLabel} defaultValue={investment.currency ?? ""} className="h-8 text-xs">
             <option value="" disabled>
@@ -82,6 +89,8 @@ export function InvestmentRowActions({ investment }: { investment: CompanyInvest
           />
           {correct.errorFor("ownershipPct")}
         </div>
+        </>
+        ) : null}
       </div>
       <p className="text-xs text-muted-foreground">{p.correctionNote}</p>
       <div className="flex gap-1">

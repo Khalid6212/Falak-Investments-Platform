@@ -373,13 +373,76 @@ test("investments: Remove ends one (Terminated) and is Admin only", async () => 
   assert.ok(!admin.calls.some((c) => c.endsWith(".delete") || c.endsWith(".deleteMany")), "no rows removed");
 });
 
+const OLD_AGREEMENT = {
+  id: "agr_old",
+  agreementNumber: "thakaa-fund-1",
+  ownershipPositionId: "pos_1",
+  roundLabel: null,
+  investedAmount: "100",
+  currency: "SAR",
+  signedDate: new Date("2023-05-05"),
+  ownershipPct: "0.25",
+  ownershipPosition: { company: { department: "InvestmentDepartment" } },
+};
+
+function investmentStub(falakRoles: { role: string }[], department = "InvestmentDepartment") {
+  const created: Record<string, unknown>[] = [];
+  const db = recordingDb(falakRoles, {
+    user: { findUnique: async () => ({ department, allDepartments: false }) },
+    investmentAgreement: {
+      findFirst: async () => OLD_AGREEMENT,
+      updateMany: async () => ({ count: 1 }),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        created.push(data);
+        return { id: "agr_new", ...data };
+      },
+    },
+  });
+  return { db, created };
+}
+
+test("investments: a professional changes only the amount; every other term is kept, whatever is sent", async () => {
+  setCurrentUser(REAL_USER);
+  const { db, created } = investmentStub(OPS);
+  setDbStub(db.db);
+  const result = await actions.correctInvestmentAction(
+    { error: null },
+    form({ agreementId: "agr_old", investedAmount: "78,100.94", currency: "USD", signedDate: "2024-01-01", ownershipPct: "0.9" })
+  );
+  assert.equal(result.success, true);
+  assert.equal(created[0].investedAmount, "78100.94");
+  assert.equal(created[0].currency, "SAR");
+  assert.equal((created[0].signedDate as Date).toISOString().slice(0, 10), "2023-05-05");
+  assert.equal(created[0].ownershipPct, "0.25");
+  assert.ok(!db.calls.includes("ownershipSnapshot.create"));
+  assert.ok(db.calls.includes("auditEvent.create"));
+});
+
+test("investments: a professional can't edit another department's investment", async () => {
+  setCurrentUser(REAL_USER);
+  const { db, created } = investmentStub(OPS, "OtherDepartment");
+  setDbStub(db.db);
+  const result = await actions.correctInvestmentAction({ error: null }, form({ agreementId: "agr_old", investedAmount: "5" }));
+  assert.ok(result.error);
+  assert.equal(created.length, 0);
+});
+
+test("investments: a professional still can't remove an investment", async () => {
+  setCurrentUser(REAL_USER);
+  const { db } = investmentStub(OPS);
+  setDbStub(db.db);
+  const result = await actions.removeInvestmentAction({ error: null }, form({ agreementId: "agr_old" }));
+  assert.ok(result.error);
+  assert.ok(!db.calls.includes("investmentAgreement.updateMany"));
+});
+
 test("investments: Correct ends the old record and saves the corrected terms as a new one that supersedes it", async () => {
   setCurrentUser(REAL_USER);
   const created: Record<string, unknown>[] = [];
   const ended: Record<string, unknown>[] = [];
   const admin = recordingDb(ADMIN, {
     investmentAgreement: {
-      findFirst: async () => ({ id: "agr_old", agreementNumber: "thakaa-fund-1", ownershipPositionId: "pos_1", roundLabel: null }),
+      findFirst: async () => OLD_AGREEMENT,
       updateMany: async (args: { data: Record<string, unknown> }) => {
         ended.push(args.data);
         return { count: 1 };

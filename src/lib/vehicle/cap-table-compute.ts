@@ -17,9 +17,30 @@ export interface VehicleCapTableInvestorRaw {
   storedOwnershipPct: number | null;
 }
 
+/** One startup's two records; companyId null holds contributions not recorded per startup. */
+export interface VehicleStartupCapitalRaw {
+  companyId: string | null;
+  slug: string | null;
+  nameEn: string | null;
+  nameAr: string | null;
+  invested: MoneyAmount[];
+  contributed: MoneyAmount[];
+}
+
 export interface VehicleCapitalOverview {
   investedCapital: MoneyAmount[];
   investors: VehicleCapTableInvestorRaw[];
+  startups: VehicleStartupCapitalRaw[];
+}
+
+export interface VehicleDifferenceRow {
+  companyId: string | null;
+  slug: string | null;
+  nameEn: string | null;
+  nameAr: string | null;
+  invested: number;
+  contributed: number;
+  difference: number;
 }
 
 export interface VehicleCapTableRow {
@@ -35,6 +56,10 @@ export interface VehicleCapTable {
   investedCapital: number;
   rows: VehicleCapTableRow[];
   totals: { contributed: number; netInvested: number; ownershipPct: number | null };
+  /** Cap table total minus Invested Capital (0 when under half a cent). */
+  difference: number;
+  /** The startups where the two disagree, largest gap first. */
+  differenceRows: VehicleDifferenceRow[];
 }
 
 interface DecimalLike {
@@ -57,6 +82,12 @@ export function positionContributions(position: {
     .map((e) => ({ amount: e.investedAmount!.toNumber(), currency: e.currency ?? position.currency }));
   if (perStartup.length > 0) return perStartup;
   return position.commitmentAmount === null ? [] : [{ amount: position.commitmentAmount.toNumber(), currency: position.currency }];
+}
+
+/** Two records that differ by under half a cent agree. */
+function roundedDifference(a: number, b: number): number {
+  const difference = a - b;
+  return Math.abs(difference) < 0.005 ? 0 : difference;
 }
 
 export function sumInDisplay(amounts: MoneyAmount[], display: DisplayCurrency): number {
@@ -89,6 +120,23 @@ export function computeVehicleCapTable(overview: VehicleCapitalOverview, display
     })
     .sort((a, b) => b.contributed - a.contributed);
 
+  const differenceRows = overview.startups
+    .map((s) => {
+      const invested = sumInDisplay(s.invested, display);
+      const contributed = sumInDisplay(s.contributed, display);
+      return {
+        companyId: s.companyId,
+        slug: s.slug,
+        nameEn: s.nameEn,
+        nameAr: s.nameAr,
+        invested,
+        contributed,
+        difference: roundedDifference(contributed, invested),
+      };
+    })
+    .filter((r) => r.difference !== 0)
+    .sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+
   const ownershipValues = rows.map((r) => r.ownershipPct).filter((p): p is number => p !== null);
 
   return {
@@ -99,5 +147,7 @@ export function computeVehicleCapTable(overview: VehicleCapitalOverview, display
       netInvested: rows.reduce((s, r) => s + r.netInvested, 0),
       ownershipPct: ownershipValues.length > 0 ? ownershipValues.reduce((s, p) => s + p, 0) : null,
     },
+    difference: roundedDifference(totalContributed, investedCapital),
+    differenceRows,
   };
 }

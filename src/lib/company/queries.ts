@@ -296,6 +296,7 @@ export async function getCompanyReportData(slug: string): Promise<CompanyReportD
     viewerRole,
     valuations,
     investments,
+    canEditInvestedAmount: viewerRole === "FALAK_STAFF",
     canManageInvestments: isAdmin,
     investorExposures,
   };

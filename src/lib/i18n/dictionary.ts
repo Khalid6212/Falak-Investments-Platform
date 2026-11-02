@@ -542,6 +542,12 @@ export interface Dictionary {
     latestValuationAsOf: string;
     noValuationRecorded: string;
     capTableTitle: string;
+    differenceLabel: string;
+    differenceNone: string;
+    differenceHint: string;
+    differenceStartupColumn: string;
+    differenceCapTableColumn: string;
+    differenceUnassigned: string;
     capTableCaption: string;
     investorColumn: string;
     contributedCapitalColumn: string;
@@ -738,6 +744,7 @@ export interface Dictionary {
     viewOnDashboardAction: string;
     formattedReportAction: string;
     correctAction: string;
+    editAmountAction: string;
     removeAction: string;
     removeConfirm: string;
     correctionNote: string;
@@ -1402,6 +1409,12 @@ export const en = {
     latestValuationAsOf: "As of",
     noValuationRecorded: "No valuation recorded yet",
     capTableTitle: "Cap Table",
+    differenceLabel: "Difference (Cap Table minus Invested Capital)",
+    differenceNone: "None: the two totals match.",
+    differenceHint: "Each row is a startup whose investors' amounts don't match its recorded investment. Open the startup to edit the invested amount, or correct the investor amounts under Investor Assignment.",
+    differenceStartupColumn: "Startup",
+    differenceCapTableColumn: "Cap Table",
+    differenceUnassigned: "Not recorded per startup",
     capTableCaption: "Each investor's contributed capital, net invested capital, and ownership of this vehicle.",
     investorColumn: "Investor",
     contributedCapitalColumn: "Contributed Capital",
@@ -1603,6 +1616,7 @@ export const en = {
     viewOnDashboardAction: "View dashboard",
     formattedReportAction: "Formatted report",
     correctAction: "Correct",
+    editAmountAction: "Edit amount",
     removeAction: "Remove",
     removeConfirm: "Remove this investment? It will stop counting in every total; the record stays in the audit history.",
     correctionNote: "Saving replaces this record with the corrected one; the original stays in the audit history.",
@@ -2267,6 +2281,12 @@ export const ar = {
     latestValuationAsOf: "بتاريخ",
     noValuationRecorded: "لم يُسجَّل أي تقييم بعد",
     capTableTitle: "جدول الملكية",
+    differenceLabel: "الفرق (جدول الملكية ناقص رأس المال المستثمر)",
+    differenceNone: "لا يوجد: الإجماليان متطابقان.",
+    differenceHint: "يمثل كل صف شركة لا تطابق مبالغ مستثمريها استثمارها المسجل. افتح الشركة لتعديل المبلغ المستثمر، أو صحح مبالغ المستثمرين من صفحة ربط المستثمرين.",
+    differenceStartupColumn: "الشركة",
+    differenceCapTableColumn: "جدول الملكية",
+    differenceUnassigned: "غير مسجل حسب الشركة",
     capTableCaption: "رأس المال المساهم به لكل مستثمر، وصافي رأس المال المستثمر، ونسبة ملكيته في هذه الأداة.",
     investorColumn: "المستثمر",
     contributedCapitalColumn: "رأس المال المساهم به",
@@ -2468,6 +2488,7 @@ export const ar = {
     viewOnDashboardAction: "عرض لوحة المعلومات",
     formattedReportAction: "التقرير المنسق",
     correctAction: "تصحيح",
+    editAmountAction: "تعديل المبلغ",
     removeAction: "إزالة",
     removeConfirm: "إزالة هذا الاستثمار؟ لن يُحتسب بعد الآن في أي إجمالي، ويبقى السجل في سجل التدقيق.",
     correctionNote: "يستبدل الحفظ هذا السجل بالسجل المصحح، ويبقى الأصل في سجل التدقيق.",

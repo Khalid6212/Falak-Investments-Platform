@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { VehicleCompanyTable } from "./VehicleCompanyTable";
 import { VehicleKpis } from "./VehicleKpis";
 import { VehicleCapTable } from "./VehicleCapTable";
+import { VehicleDifference } from "./VehicleDifference";
 import { PortfolioAlertsPanel } from "@/components/portfolio/AlertsPanel";
 import { CompanyTrendsTable } from "@/components/portfolio/CompanyTrendsTable";
 import { ReportsLogTable } from "@/components/portfolio/ReportsLogTable";
@@ -116,6 +117,7 @@ export function VehicleDashboardView({
         <div className="space-y-3">
           <h2 className="font-heading text-sm font-semibold text-foreground">{t.vehicleReport.capTableTitle}</h2>
           <VehicleCapTable capTable={capTable} displayCurrency={displayCurrency} />
+          <VehicleDifference capTable={capTable} displayCurrency={displayCurrency} vehicleSlug={vehicle.slug} />
         </div>
 
         <PortfolioAlertsPanel alerts={alerts} linkQuery={`fromVehicle=${vehicle.slug}`} />

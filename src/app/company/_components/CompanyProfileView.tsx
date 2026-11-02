@@ -149,7 +149,7 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                           <th className="py-1.5 pe-3 text-start font-medium">{p.signedColumn}</th>
                           <th className="py-1.5 pe-3 text-start font-medium">{p.amountColumn}</th>
                           <th className="py-1.5 text-start font-medium">{p.ownershipColumn}</th>
-                          {data.canManageInvestments ? (
+                          {data.canEditInvestedAmount ? (
                             <th className="py-1.5 ps-3 text-start font-medium">
                               <span className="sr-only">{p.correctAction}</span>
                             </th>
@@ -169,9 +169,9 @@ export function CompanyProfileView({ data, initialTab, initialPeriodKey }: Compa
                               {i.investedAmount !== null && i.currency ? <Num>{formatCurrency(i.investedAmount, i.currency, lang)}</Num> : "—"}
                             </td>
                             <td className="whitespace-nowrap py-1.5">{i.ownershipPct !== null ? <Num>{formatPercent(i.ownershipPct, lang, 2)}</Num> : "—"}</td>
-                            {data.canManageInvestments ? (
+                            {data.canEditInvestedAmount ? (
                               <td className="py-1.5 ps-3 align-top">
-                                <InvestmentRowActions investment={i} />
+                                <InvestmentRowActions investment={i} canManage={data.canManageInvestments} />
                               </td>
                             ) : null}
                           </tr>

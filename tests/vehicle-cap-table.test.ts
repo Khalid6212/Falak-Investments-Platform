@@ -72,6 +72,74 @@ test("cap table: with nothing contributed yet, ownership falls back to the store
   assert.equal(table.rows[0].ownershipPct, 0.25);
 });
 
+test("cap table: the difference is cap table minus invested capital, shown per startup", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(
+    makeVehicleCapTableDbStub({
+      falakRoles: OPS,
+      agreements: [
+        { vehicleId: "veh_1", investedAmount: 1000, currency: "USD", companyId: "co_match" },
+        { vehicleId: "veh_1", investedAmount: 0, currency: "USD", companyId: "co_units" },
+        { vehicleId: "veh_1", investedAmount: 500, currency: "USD", companyId: "co_short" },
+      ],
+      positions: [
+        {
+          vehicleId: "veh_1",
+          investor: A,
+          commitmentAmount: 999,
+          ownershipPct: null,
+          currency: "USD",
+          exposures: [
+            { companyId: "co_match", investedAmount: 1000, currency: "USD" },
+            { companyId: "co_units", investedAmount: 700, currency: "USD" },
+            { companyId: "co_short", investedAmount: 400, currency: "USD" },
+          ],
+        },
+        // No per-startup amounts: counted in the total, on its own row.
+        { vehicleId: "veh_1", investor: B, commitmentAmount: 50, ownershipPct: null, currency: "USD" },
+      ],
+    })
+  );
+  const table = computeVehicleCapTable(await getVehicleCapitalOverview("veh_1"), "USD");
+  assert.equal(table.difference, 650);
+  assert.deepEqual(
+    table.differenceRows.map((r) => [r.companyId, r.difference]),
+    [
+      ["co_units", 700],
+      ["co_short", -100],
+      [null, 50],
+    ]
+  );
+  // The rows always explain the total.
+  assert.equal(table.differenceRows.reduce((sum, r) => sum + r.difference, 0), table.difference);
+});
+
+test("cap table: matching records show no difference, even with rounding noise", async () => {
+  setCurrentUser(REAL_USER);
+  setDbStub(
+    makeVehicleCapTableDbStub({
+      falakRoles: OPS,
+      agreements: [{ vehicleId: "veh_1", investedAmount: 0.3, currency: "USD", companyId: "co_1" }],
+      positions: [
+        {
+          vehicleId: "veh_1",
+          investor: A,
+          commitmentAmount: null,
+          ownershipPct: null,
+          currency: "USD",
+          exposures: [
+            { companyId: "co_1", investedAmount: 0.1, currency: "USD" },
+            { companyId: "co_1", investedAmount: 0.2, currency: "USD" },
+          ],
+        },
+      ],
+    })
+  );
+  const table = computeVehicleCapTable(await getVehicleCapitalOverview("veh_1"), "USD");
+  assert.equal(table.difference, 0);
+  assert.equal(table.differenceRows.length, 0);
+});
+
 test("cap table: amounts recorded per startup replace the position's own amount", async () => {
   const dec = (n: number) => ({ toNumber: () => n });
   const { positionContributions } = await import("../src/lib/vehicle/cap-table-compute.ts");

@@ -1971,7 +1971,7 @@ export async function deleteReportingCycleAction(_prevState: ActionState, formDa
 }
 
 // ============================================================
-// Correcting or removing a recorded investment (Admin)
+// Correcting or removing a recorded investment
 // ============================================================
 
 // The app's database account may change an investment's status but not
@@ -2015,11 +2015,17 @@ export async function removeInvestmentAction(_prevState: ActionState, formData: 
   return { error: null, success: true };
 }
 
-/** Replaces a recorded investment's amount, currency, date or ownership. Admin only. */
+/**
+ * Replaces a recorded investment's amount, currency, date or ownership.
+ * Admins can change all of these; other staff only the invested amount,
+ * in their own department.
+ */
 export async function correctInvestmentAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   let user;
+  let role;
+  let departments: Department[] | null = null;
   try {
-    ({ user } = await requireFalakRole("FALAK_ADMIN"));
+    ({ user, role, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS"));
   } catch (error) {
     if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
     throw error;
@@ -2029,22 +2035,40 @@ export async function correctInvestmentAction(_prevState: ActionState, formData:
   const currency = readString(formData, "currency");
   const ownershipPct = readAmount(formData, "ownershipPct");
   const signedDateRaw = readString(formData, "signedDate");
+  const isAdmin = role === "FALAK_ADMIN";
   const invalid = checkFields([
     ["investedAmount", investedAmount && AMOUNT_PATTERN.test(investedAmount), FIELD.amount],
-    ["currency", currency && CURRENCIES.includes(currency as Currency), FIELD.choose],
-    ["ownershipPct", !ownershipPct || AMOUNT_PATTERN.test(ownershipPct), "Enter a decimal share, e.g. 0.10 for 10%, or leave it empty."],
-    ["signedDate", isDateInput(signedDateRaw), FIELD.date],
+    ...(isAdmin
+      ? ([
+          ["currency", currency && CURRENCIES.includes(currency as Currency), FIELD.choose],
+          ["ownershipPct", !ownershipPct || AMOUNT_PATTERN.test(ownershipPct), "Enter a decimal share, e.g. 0.10 for 10%, or leave it empty."],
+          ["signedDate", isDateInput(signedDateRaw), FIELD.date],
+        ] as Parameters<typeof checkFields>[0])
+      : []),
   ]);
-  if (invalid || !agreementId || !investedAmount || !currency || !signedDateRaw) return invalid ?? { error: GENERIC_ERROR };
-  const signedDate = new Date(signedDateRaw);
+  if (invalid || !agreementId || !investedAmount) return invalid ?? { error: GENERIC_ERROR };
 
   try {
     const done = await db.$transaction(async (tx) => {
       const old = await tx.investmentAgreement.findFirst({
         where: { id: agreementId, status: { in: INVESTED } },
-        select: { id: true, agreementNumber: true, ownershipPositionId: true, roundLabel: true },
+        select: {
+          id: true,
+          agreementNumber: true,
+          ownershipPositionId: true,
+          roundLabel: true,
+          investedAmount: true,
+          currency: true,
+          signedDate: true,
+          ownershipPct: true,
+          ownershipPosition: { select: { company: { select: { department: true } } } },
+        },
       });
       if (!old) return false;
+      if (!inDepartment(departments, old.ownershipPosition.company.department)) return OUT_OF_DEPARTMENT;
+      const newCurrency = isAdmin ? (currency as Currency) : old.currency;
+      if (!newCurrency) return "This investment has no currency yet; ask an admin to set it.";
+      const signedDate = isAdmin ? new Date(signedDateRaw!) : old.signedDate;
       const ended = await tx.investmentAgreement.updateMany({
         where: { id: old.id, status: { in: INVESTED } },
         data: { status: "Terminated", effectiveTo: new Date() },
@@ -2058,13 +2082,13 @@ export async function correctInvestmentAction(_prevState: ActionState, formData:
           signedDate,
           effectiveFrom: signedDate,
           investedAmount,
-          currency: currency as Currency,
-          ownershipPct: ownershipPct || null,
+          currency: newCurrency,
+          ownershipPct: isAdmin ? ownershipPct || null : old.ownershipPct,
           status: "Active",
           supersedesAgreementId: old.id,
         },
       });
-      if (ownershipPct) {
+      if (isAdmin && ownershipPct) {
         await tx.ownershipSnapshot.create({
           data: { ownershipPositionId: old.ownershipPositionId, asOfDate: signedDate, ownershipPct, source: "admin" },
         });
@@ -2074,11 +2098,12 @@ export async function correctInvestmentAction(_prevState: ActionState, formData:
         action: "investment_agreement.corrected",
         targetType: "InvestmentAgreement",
         targetId: corrected.id,
-        meta: { replaces: old.id },
+        meta: { replaces: old.id, previousAmount: old.investedAmount?.toString() ?? null, newAmount: investedAmount },
       });
       return true;
     });
-    if (!done) return { error: "This investment was changed or removed meanwhile. Reload and try again." };
+    if (done === false) return { error: "This investment was changed or removed meanwhile. Reload and try again." };
+    if (typeof done === "string") return { error: done };
   } catch (error) {
     console.error("correctInvestmentAction failed", error);
     return { error: GENERIC_ERROR };
