@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { Prisma, NarrativeKind } from "@/generated/prisma/client";
 import { requireFalakRole } from "@/lib/auth/authorization";
+import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import { InvalidTransitionError } from "@/lib/reporting/submission-errors";
 import { writeAuditEvent } from "@/lib/audit/write-audit-event";
 import { sendReportPublishedEmail } from "@/lib/email/send-email";
@@ -81,7 +82,8 @@ async function resolveInvestorExposure(tx: Prisma.TransactionClient, companyId: 
  * the nullable scope FKs) -- supersedes any existing version, creates the
  * new one, attaches this one submission, creates whichever narrative
  * sections have real text, and grants access to every investor currently
- * exposed to this company. Only legal from "approved"; never changes the
+ * exposed to this company. Open to Operations within their own department,
+ * like the review steps before it. Only legal from "approved"; never changes the
  * CompanySubmission's own status (there is no "published" value for it --
  * publishing is an act on Report/ReportVersion, not the submission).
  */
@@ -104,7 +106,7 @@ export interface PublishResult {
 }
 
 export async function publishSubmission(submissionId: string, narratives: NarrativeInputs): Promise<PublishResult> {
-  const { user } = await requireFalakRole("FALAK_ADMIN");
+  const { user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
 
   return db.$transaction(async (tx) => {
     const submission = await tx.companySubmission.findUnique({
@@ -119,13 +121,16 @@ export async function publishSubmission(submissionId: string, narratives: Narrat
             periodStart: true,
             periodEnd: true,
             archivedAt: true,
-            company: { select: { archivedAt: true, slug: true, nameEn: true } },
+            company: { select: { archivedAt: true, slug: true, nameEn: true, department: true } },
           },
         },
       },
     });
 
     if (!submission || submission.status !== "approved" || submission.cycle.archivedAt || submission.cycle.company.archivedAt) {
+      throw new InvalidTransitionError();
+    }
+    if (departments && !departments.includes(submission.cycle.company.department)) {
       throw new InvalidTransitionError();
     }
 

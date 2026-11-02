@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireFalakRole } from "@/lib/auth/authorization";
+import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import { writeAuditEvent } from "@/lib/audit/write-audit-event";
 import { startReview, requestChanges, approveSubmission } from "@/lib/reporting/review-workflow";
 import {
@@ -299,14 +300,14 @@ export async function resendReportToInvestorsAction(
 /**
  * The written sections of this submission's currently published report,
  * if any. The publish form starts from these, so republishing keeps the
- * existing text unless it is edited. Admin-only, like publishing.
+ * existing text unless it is edited. Scoped by department, like publishing.
  */
 export async function getPublishedNarrativesForReviewAction(
   submissionId: string
 ): Promise<{ kind: NarrativeKind; textEn: string; textAr: string }[]> {
-  await requireFalakRole("FALAK_ADMIN");
-  const submission = await db.companySubmission.findUnique({
-    where: { id: submissionId },
+  const { departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS");
+  const submission = await db.companySubmission.findFirst({
+    where: { id: submissionId, ...(departments ? { cycle: { company: { department: { in: departments } } } } : {}) },
     select: { cycle: { select: { companyId: true, periodStart: true, periodEnd: true } } },
   });
   if (!submission) return [];

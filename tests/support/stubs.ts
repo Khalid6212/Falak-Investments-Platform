@@ -643,6 +643,7 @@ export function makeReviewWorkflowDbStub(options: {
 }
 
 export interface PublishSubmissionFixture {
+  companyDepartment?: string;
   id: string;
   status: string;
   companyArchived?: boolean;
@@ -696,6 +697,7 @@ export interface InvestorFixture {
 export function makePublishWorkflowDbStub(options: {
   falakRoles?: FalakRoleFixture[];
   submission: PublishSubmissionFixture | null;
+  userDepartment?: string;
   ownershipPositions?: OwnershipPositionFixture[];
   investorVehiclePositions?: InvestorVehiclePositionFixture[];
   investors?: InvestorFixture[];
@@ -715,6 +717,7 @@ export function makePublishWorkflowDbStub(options: {
   };
 
   const stub = {
+    user: { findUnique: async () => ({ department: options.userDepartment ?? null, allDepartments: false }) },
     userRoleAssignment: {
       findMany: async ({ where }: { where: Record<string, unknown> }) => {
         const roleFilter = where.role as { in: string[] };
@@ -737,6 +740,7 @@ export function makePublishWorkflowDbStub(options: {
             periodEnd: s.periodEnd,
             company: {
               archivedAt: s.companyArchived ? new Date() : null,
+              department: s.companyDepartment ?? "InvestmentDepartment",
               slug: s.companySlug ?? "co-slug",
               nameEn: s.companyNameEn ?? "Co Name",
             },

@@ -54,10 +54,29 @@ test("publishSubmission denies a caller with no Falak role", async () => {
   await assert.rejects(() => publishSubmission("sub_1", NO_NARRATIVES), ForbiddenError);
 });
 
-test("publishSubmission denies a FALAK_OPERATIONS-only caller (ADMIN-only gate, unlike approveSubmission)", async () => {
+test("publishSubmission lets a FALAK_OPERATIONS caller publish with its written sections, in their own department", async () => {
   setCurrentUser(REAL_USER);
-  setDbStub(makePublishWorkflowDbStub({ falakRoles: OPERATIONS_ROLE, submission: BASE_SUBMISSION }));
-  await assert.rejects(() => publishSubmission("sub_1", NO_NARRATIVES), ForbiddenError);
+  const db = makePublishWorkflowDbStub({
+    falakRoles: OPERATIONS_ROLE,
+    userDepartment: "InvestmentDepartment",
+    submission: BASE_SUBMISSION,
+  });
+  setDbStub(db);
+  const result = await publishSubmission("sub_1", { operational_update: { textEn: "Expanded", textAr: "" } });
+  assert.equal(result.versionNo, 1);
+  assert.equal(db.getReports().length, 1);
+});
+
+test("publishSubmission denies a FALAK_OPERATIONS caller from another department", async () => {
+  setCurrentUser(REAL_USER);
+  const db = makePublishWorkflowDbStub({
+    falakRoles: OPERATIONS_ROLE,
+    userDepartment: "OtherDepartment",
+    submission: BASE_SUBMISSION,
+  });
+  setDbStub(db);
+  await assert.rejects(() => publishSubmission("sub_1", NO_NARRATIVES), InvalidTransitionError);
+  assert.equal(db.getReports().length, 0);
 });
 
 // ============================================================

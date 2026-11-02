@@ -121,7 +121,7 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
         if (!cancelled) setNarrativesResult({ submissionId, narratives: result });
       })
       .catch(() => {
-        // Non-admins can't publish and get nothing to pre-fill.
+        // Nothing to pre-fill; the form still opens empty.
         if (!cancelled) setNarrativesResult({ submissionId, narratives: [] });
       });
     return () => {
