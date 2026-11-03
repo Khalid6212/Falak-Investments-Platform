@@ -51,6 +51,16 @@ test("percentChange: null previous -> null", () => {
   assert.equal(percentChange(120, null), null);
 });
 
+test("percentChange: between negatives, a figure falling further is negative growth", () => {
+  assert.equal(percentChange(-150, -100), -0.5);
+  assert.equal(percentChange(-50, -100), 0.5);
+});
+
+test("percentChange: crossing zero has no percentage", () => {
+  assert.equal(percentChange(50, -100), null);
+  assert.equal(percentChange(-50, 100), null);
+});
+
 test("percentChange: zero previous -> null, not Infinity", () => {
   assert.equal(percentChange(120, 0), null);
 });

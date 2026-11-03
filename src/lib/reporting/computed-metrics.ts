@@ -26,11 +26,14 @@ export function computeNetMargin(revenue: number | null, expenses: number | null
  * Generic prior-vs-current percentage change -- used for Revenue Growth
  * % and every row of the branded report's QoQ Growth column alike. null
  * when either side is missing or the prior value is 0 (a "from zero"
- * growth rate is not a meaningful percentage).
+ * growth rate is not a meaningful percentage), or when the two have
+ * opposite signs (no percentage describes crossing zero). Measured against
+ * the prior value's size, so a figure falling from -100 to -150 is -50%.
  */
 export function percentChange(current: number | null, previous: number | null): number | null {
   if (current === null || previous === null || previous === 0) return null;
-  return (current - previous) / previous;
+  if (current !== 0 && Math.sign(current) !== Math.sign(previous)) return null;
+  return (current - previous) / Math.abs(previous);
 }
 
 /**

@@ -29,6 +29,7 @@ import { findMetric, findNumericMetricValue, formatMetricValue } from "@/lib/rep
 import { REVENUE_METRIC_KEYS } from "@/lib/reporting/revenue-metrics";
 import type { QuarterlyReportData } from "@/lib/company/quarterly-report";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
+import type { Currency } from "@/generated/prisma/client";
 
 // Paragraphs/bullets are blank-line-separated runs of the same single
 // narrative text field -- the schema allows exactly one row per
@@ -44,7 +45,8 @@ function splitParagraphs(text: string): string[] {
 
 // The metric keys each report section looks for, in order. Templates name
 // the same measure differently (the original 6-metric template uses
-// "expenses_total", the 30-metric one "fin_expenses"); the first key
+// "expenses_total", the 30-metric one "fin_expenses", and startup
+// templates built from labels "b2b_clients_if_applicable"); the first key
 // present in the report is used.
 const METRIC_ALIASES = {
   cogs: ["fin_cogs"],
@@ -53,9 +55,44 @@ const METRIC_ALIASES = {
   burn: BURN_KEYS,
   netCashFlow: NET_CASH_FLOW_KEYS,
   runway: RUNWAY_KEYS,
-  activeCustomers: ["cust_active_customers", "customers_active"],
-  churn: ["cust_churn_rate", "churn_rate_pct"],
+  grossMargin: ["fin_gross_margin", "gross_margin"],
+  netMargin: ["fin_net_margin", "net_margin"],
+  b2bClients: ["cust_b2b_clients", "b2b_clients", "b2b_clients_if_applicable"],
+  b2cUsers: ["cust_b2c_users", "b2c_users", "b2c_users_if_applicable"],
+  newCustomers: ["cust_new_customers", "new_customers", "new_customers_this_period"],
+  activeCustomers: ["cust_active_customers", "customers_active", "active_customers"],
+  churn: ["cust_churn_rate", "churn_rate_pct", "churn_rate"],
+  arpu: ["cust_arpu", "arpu_avg_revenue_per_user", "arpu_avg_revenue"],
+  cac: ["cust_cac", "cac"],
+  b2bDeals: ["cust_b2b_deals", "b2b_deals", "b2b_deals_if_applicable"],
+  b2cDeals: ["cust_b2c_deals", "b2c_deals", "b2c_deals_if_applicable"],
 };
+
+const NUMERIC_TYPES = new Set(["Currency", "Percent", "Number"]);
+
+// Figures show without a minus sign: negative in red, positive in green.
+// QoQ growth keeps its sign (see GrowthValue).
+function Signed({ value, children }: { value: number; children: string }) {
+  return (
+    <span className={value < 0 ? "text-danger" : value > 0 ? "text-nebula-aqua" : ""}>
+      <Num>{children}</Num>
+    </span>
+  );
+}
+
+function amount(value: number | null, format: (v: number) => string, naText: string) {
+  return value === null ? naText : <Signed value={value}>{format(Math.abs(value))}</Signed>;
+}
+
+function metricValue(field: SubmissionMetricFieldDTO | undefined, currency: Currency, lang: "en" | "ar", naText: string) {
+  if (!field) return naText;
+  const n = Number(field.value);
+  if (NUMERIC_TYPES.has(field.dataType) && !field.isNa && field.value !== null && Number.isFinite(n)) {
+    return <Signed value={n}>{formatMetricValue({ ...field, value: String(Math.abs(n)) }, currency, lang) ?? ""}</Signed>;
+  }
+  const text = formatMetricValue(field, currency, lang);
+  return text === null ? naText : <Num>{text}</Num>;
+}
 
 // Every metric the report's own template defines (plus any the prior
 // period's template had), in template order -- so the table follows
@@ -84,7 +121,7 @@ const LOWER_IS_BETTER = new Set([
   ...METRIC_ALIASES.expenses,
   ...METRIC_ALIASES.burn,
   ...METRIC_ALIASES.churn,
-  "cust_cac",
+  ...METRIC_ALIASES.cac,
 ]);
 
 // Colour goes on the value itself: the table cell sets its own text colour,
@@ -146,8 +183,17 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
 
   const cogs = num(metrics, "cogs");
   const expenses = num(metrics, "expenses");
-  const grossMargin = computeGrossMargin(revenue, cogs);
-  const netMargin = computeNetMargin(revenue, expenses);
+  // Worked out from the figures when the template asks for them,
+  // otherwise the margin the startup reported (stored as e.g. 84.5 for 84.5%).
+  const reportedPercent = (role: keyof typeof METRIC_ALIASES) => {
+    const v = num(metrics, role);
+    return v === null ? null : v / 100;
+  };
+  const grossMargin = computeGrossMargin(revenue, cogs) ?? reportedPercent("grossMargin");
+  const netMargin = computeNetMargin(revenue, expenses) ?? reportedPercent("netMargin");
+  const na = t.companyReport.naValueDisplay;
+  const money = (v: number) => formatCurrency(v, company.currency, lang);
+  const pct = (v: number) => formatPercent(v, lang);
   const revenueGrowth = percentChange(revenue, previousRevenue);
   const projection = computeRevenueProjection(revenue);
 
@@ -178,16 +224,14 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
     const field = findMetric(metrics, key);
     const prevField = findMetric(previousMetrics ?? [], key);
     const label = lang === "ar" ? labelSource.labelAr : labelSource.labelEn;
-    const currentDisplay = field ? formatMetricValue(field, company.currency, lang) : null;
-    const priorDisplay = prevField ? formatMetricValue(prevField, company.currency, lang) : null;
     const growth = percentChange(findNumericMetricValue(metrics, key), findNumericMetricValue(previousMetrics ?? [], key));
     const good = growth === null || growth === 0 ? null : LOWER_IS_BETTER.has(key) ? growth < 0 : growth > 0;
 
     return (
       <Tr key={key}>
         <Td>{label}</Td>
-        <Td>{currentDisplay === null ? t.companyReport.naValueDisplay : <Num>{currentDisplay}</Num>}</Td>
-        <Td>{priorDisplay === null ? t.companyReport.naValueDisplay : <Num>{priorDisplay}</Num>}</Td>
+        <Td>{metricValue(field, company.currency, lang, na)}</Td>
+        <Td>{metricValue(prevField, company.currency, lang, na)}</Td>
         <Td className="font-medium">
           <GrowthValue growth={growth} good={good} lang={lang} naText={t.companyReport.naValueDisplay} />
         </Td>
@@ -201,8 +245,8 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
     return (
       <Tr key={key}>
         <Td>{label}</Td>
-        <Td>{current === null ? t.companyReport.naValueDisplay : <Num>{format(current)}</Num>}</Td>
-        <Td>{previous === null ? t.companyReport.naValueDisplay : <Num>{format(previous)}</Num>}</Td>
+        <Td>{amount(current, format, na)}</Td>
+        <Td>{amount(previous, format, na)}</Td>
         <Td className="font-medium">
           <GrowthValue growth={growth} good={good} lang={lang} naText={t.companyReport.naValueDisplay} />
         </Td>
@@ -211,20 +255,14 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
   }
   const months = (v: number) => `${formatNumber(v, lang)} ${t.quarterlyReport.monthsUnit}`;
 
-  const customerTileKeys = [
-    "cust_b2b_clients",
-    "cust_b2c_users",
-    "cust_new_customers",
-    keyFor("activeCustomers"),
-    keyFor("churn"),
-    "cust_arpu",
-    "cust_cac",
-    "cust_b2b_deals",
-    "cust_b2c_deals",
-  ].filter((k): k is string => k !== null && findMetric(metrics, k) !== undefined);
-  const growthIndicatorKeys = [keyFor("activeCustomers"), keyFor("churn"), "cust_arpu", "cust_cac"].filter(
-    (k): k is string => k !== null
-  );
+  const customerTileKeys = (
+    ["b2bClients", "b2cUsers", "newCustomers", "activeCustomers", "churn", "arpu", "cac", "b2bDeals", "b2cDeals"] as const
+  )
+    .map(keyFor)
+    .filter((k): k is string => k !== null && findMetric(metrics, k) !== undefined);
+  const growthIndicatorKeys = (["activeCustomers", "churn", "arpu", "cac"] as const)
+    .map(keyFor)
+    .filter((k): k is string => k !== null);
 
   return (
     <div className="report-print mx-auto max-w-4xl px-4 py-8 print:max-w-none print:px-0 print:py-0">
@@ -272,27 +310,25 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
           <KpiCard
             className="report-card"
             label={t.quarterlyReport.currentRevenueLabel}
-            value={revenue === null ? t.companyReport.naValueDisplay : <Num>{formatCurrency(revenue, company.currency, lang)}</Num>}
+            value={amount(revenue, money, na)}
             hint={revenueGrowth === null ? undefined : `${t.companyReport.revenueGrowthLabel}: ${signedPercent(revenueGrowth, lang)}`}
           />
           <KpiCard
             className="report-card"
             label={t.quarterlyReport.priorRevenueLabel}
-            value={
-              previousRevenue === null ? t.companyReport.naValueDisplay : <Num>{formatCurrency(previousRevenue, company.currency, lang)}</Num>
-            }
+            value={amount(previousRevenue, money, na)}
             hint={data.previousPeriodLabel ?? undefined}
           />
           <KpiCard
             className="report-card"
             label={t.quarterlyReport.projectionLabel}
-            value={projection === null ? t.companyReport.naValueDisplay : <Num>{formatCurrency(projection, company.currency, lang)}</Num>}
+            value={amount(projection, money, na)}
             hint={t.quarterlyReport.projectionHint}
           />
           <KpiCard
             className="report-card"
             label={t.quarterlyReport.runwayLabel}
-            value={runway === null ? t.companyReport.naValueDisplay : <Num>{months(runway)}</Num>}
+            value={amount(runway, months, na)}
             hint={
               num(metrics, "cash") === null
                 ? undefined
@@ -374,10 +410,8 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
               <TBody>
                 <Tr>
                   <Td>{t.companyReport.revenueLabel}</Td>
-                  <Td>{revenue === null ? t.companyReport.naValueDisplay : <Num>{formatCurrency(revenue, company.currency, lang)}</Num>}</Td>
-                  <Td>
-                    {previousRevenue === null ? t.companyReport.naValueDisplay : <Num>{formatCurrency(previousRevenue, company.currency, lang)}</Num>}
-                  </Td>
+                  <Td>{amount(revenue, money, na)}</Td>
+                  <Td>{amount(previousRevenue, money, na)}</Td>
                   <Td className="font-medium">
                     <GrowthValue
                       growth={revenueGrowth}
@@ -404,24 +438,22 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
           <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex justify-between gap-3 border-b border-border-subtle py-1.5 text-sm">
               <dt className="text-muted-foreground">{t.companyReport.grossMarginLabel}</dt>
-              <dd className="text-end text-foreground">{grossMargin === null ? t.companyReport.naValueDisplay : <Num>{formatPercent(grossMargin, lang)}</Num>}</dd>
+              <dd className="text-end text-foreground">{amount(grossMargin, pct, na)}</dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border-subtle py-1.5 text-sm">
               <dt className="text-muted-foreground">{t.companyReport.netMarginLabel}</dt>
-              <dd className="text-end text-foreground">{netMargin === null ? t.companyReport.naValueDisplay : <Num>{formatPercent(netMargin, lang)}</Num>}</dd>
+              <dd className="text-end text-foreground">{amount(netMargin, pct, na)}</dd>
             </div>
             {growthIndicatorKeys.map((key) => {
               const field = findMetric(metrics, key);
               const prevField = findMetric(previousMetrics ?? [], key);
               if (!field) return null;
-              const current = formatMetricValue(field, company.currency, lang) ?? t.companyReport.naValueDisplay;
-              const prior = prevField ? (formatMetricValue(prevField, company.currency, lang) ?? t.companyReport.naValueDisplay) : null;
               return (
                 <div key={key} className="flex justify-between gap-3 border-b border-border-subtle py-1.5 text-sm">
                   <dt className="text-muted-foreground">{lang === "ar" ? field.labelAr : field.labelEn}</dt>
                   <dd className="text-end text-foreground">
-                    <Num>{current}</Num>
-                    {prior ? <span className="ms-1 text-xs text-muted-foreground">({prior})</span> : null}
+                    {metricValue(field, company.currency, lang, na)}
+                    {prevField ? <span className="ms-1 text-xs text-muted-foreground">({metricValue(prevField, company.currency, lang, na)})</span> : null}
                   </dd>
                 </div>
               );
@@ -447,12 +479,11 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
             {customerTileKeys.map((key) => {
               const field = findMetric(metrics, key);
               if (!field) return null;
-              const value = formatMetricValue(field, company.currency, lang) ?? t.companyReport.naValueDisplay;
               return (
                 <div key={key} className="chamfer-br-sm bg-surface-muted p-3">
                   <p className="text-xs font-medium text-muted-foreground">{lang === "ar" ? field.labelAr : field.labelEn}</p>
                   <p className="font-heading mt-1 text-lg font-semibold text-foreground">
-                    <Num>{value}</Num>
+                    {metricValue(field, company.currency, lang, na)}
                   </p>
                 </div>
               );
