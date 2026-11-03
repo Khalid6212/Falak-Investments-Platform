@@ -211,6 +211,11 @@ export interface Dictionary {
       typeLabel: string;
       submitLabel: string;
       archiveAction: string;
+      renamePeriodAction: string;
+      renamePeriodLabel: string;
+      renamePeriodHint: string;
+      renamePeriodSaved: string;
+      saveAction: string;
       companyLabel: string;
       companiesLabel: string;
       vehicleLabel: string;
@@ -1077,6 +1082,11 @@ export const en = {
       typeLabel: "Type",
       submitLabel: "Create",
       archiveAction: "Archive",
+      renamePeriodAction: "Rename period",
+      renamePeriodLabel: "Period name",
+      renamePeriodSaved: "Period renamed.",
+      renamePeriodHint: "Applies to every startup in this request and to their published reports. Links already sent keep working.",
+      saveAction: "Save",
       companyLabel: "Company",
       companiesLabel: "Companies",
       vehicleLabel: "Vehicle",
@@ -1949,6 +1959,11 @@ export const ar = {
       typeLabel: "النوع",
       submitLabel: "إنشاء",
       archiveAction: "أرشفة",
+      renamePeriodAction: "تعديل اسم الفترة",
+      renamePeriodLabel: "اسم الفترة",
+      renamePeriodSaved: "تم تعديل اسم الفترة.",
+      renamePeriodHint: "يُطبَّق على جميع الشركات في هذا الطلب وعلى تقاريرها المنشورة. تبقى الروابط المرسلة سابقاً صالحة.",
+      saveAction: "حفظ",
       companyLabel: "الشركة",
       companiesLabel: "الشركات",
       vehicleLabel: "الأداة الاستثمارية",

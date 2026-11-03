@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/format";
 import { createReportingCycleAction } from "../../actions";
 import { ResendRequestButton } from "./ResendRequestButton";
+import { RenamePeriodButton } from "./RenamePeriodButton";
 import { CycleRemoveControls, RestoreCycleButton } from "./CycleRemoveControls";
 import { ReminderSettingsFields } from "./ReminderSettingsFields";
 import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reporting/reminder-schedule";
@@ -261,6 +262,7 @@ export function CreateReportingCycleForm({
                     {t.admin.manage.addCompaniesAction}
                   </Button>
                   <ResendRequestButton templateId={g.templateId} periodStart={g.periodStart} periodEnd={g.periodEnd} />
+                  <RenamePeriodButton templateId={g.templateId} periodStart={g.periodStart} periodEnd={g.periodEnd} periodLabel={g.periodLabel} />
                   {g.cycles.length === 1 ? (
                     <CycleRemoveControls cycleId={g.cycles[0].cycleId} companyNameEn={g.cycles[0].companyNameEn} canDelete={canDelete} />
                   ) : null}

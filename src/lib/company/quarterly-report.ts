@@ -138,7 +138,20 @@ export async function getQuarterlyReportData(slug: string, periodKey: string): P
 
   if (!company || company.archivedAt) return null;
 
-  const cycleIndex = company.cycles.findIndex((c) => c.periodLabel === periodKey);
+  let cycleIndex = company.cycles.findIndex((c) => c.periodLabel === periodKey);
+  if (cycleIndex === -1) {
+    // A link sent before the period was renamed still opens its report.
+    const renamed = await db.auditEvent.findFirst({
+      where: {
+        action: "reporting_cycle.renamed",
+        targetId: { in: company.cycles.map((c) => c.id) },
+        meta: { path: ["previousLabel"], equals: periodKey },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { targetId: true },
+    });
+    if (renamed) cycleIndex = company.cycles.findIndex((c) => c.id === renamed.targetId);
+  }
   if (cycleIndex === -1) return null;
   const cycle = company.cycles[cycleIndex];
   if (!cycle.submission) return null;

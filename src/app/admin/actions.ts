@@ -1146,6 +1146,90 @@ export async function setRequestRemindersAction(_prevState: ActionState, formDat
   return { error: null, success: true };
 }
 
+const MAX_PERIOD_LABEL_LENGTH = 50;
+
+/**
+ * Renames a reporting request's period (template + period) for the
+ * startups in the caller's department, along with their published
+ * reports. Links already sent under the old name keep working: the
+ * report page looks the old name up in this action's audit events.
+ */
+export async function renameReportingPeriodAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let user;
+  let departments: Department[] | null = null;
+  try {
+    ({ user, departments } = await requireFalakRoleWithDepartmentScope("FALAK_OPERATIONS"));
+  } catch (error) {
+    if (isAuthError(error)) return { error: GENERIC_ACCESS_DENIED };
+    throw error;
+  }
+
+  const templateId = readString(formData, "templateId");
+  const periodStartRaw = readString(formData, "periodStart");
+  const periodEndRaw = readString(formData, "periodEnd");
+  if (!templateId || !isDateInput(periodStartRaw) || !isDateInput(periodEndRaw)) return { error: GENERIC_ERROR };
+  const periodLabel = (readString(formData, "periodLabel") ?? "").trim();
+  if (!periodLabel || periodLabel.length > MAX_PERIOD_LABEL_LENGTH) {
+    const message = `Enter a period name (up to ${MAX_PERIOD_LABEL_LENGTH} characters).`;
+    return { error: message, fieldErrors: { periodLabel: message } };
+  }
+  const periodStart = new Date(periodStartRaw!);
+  const periodEnd = new Date(periodEndRaw!);
+
+  const cycles = await db.reportingCycle.findMany({
+    where: {
+      templateId,
+      periodStart,
+      periodEnd,
+      archivedAt: null,
+      company: { archivedAt: null, ...(departments ? { department: { in: departments } } : {}) },
+    },
+    select: { id: true, companyId: true, periodLabel: true, company: { select: { nameEn: true } } },
+  });
+  if (cycles.length === 0) return { error: GENERIC_ERROR };
+  const toRename = cycles.filter((c) => c.periodLabel !== periodLabel);
+  if (toRename.length === 0) return { error: null, success: true };
+
+  // The report page finds a startup's period by its name, so one startup
+  // can't have two periods with the same name.
+  const clash = await db.reportingCycle.findFirst({
+    where: {
+      companyId: { in: toRename.map((c) => c.companyId) },
+      periodLabel,
+      archivedAt: null,
+      id: { notIn: toRename.map((c) => c.id) },
+    },
+    select: { company: { select: { nameEn: true } } },
+  });
+  if (clash) {
+    const message = `${clash.company.nameEn} already has a period named "${periodLabel}".`;
+    return { error: message, fieldErrors: { periodLabel: message } };
+  }
+
+  try {
+    await db.$transaction(async (tx) => {
+      for (const cycle of toRename) {
+        await tx.reportingCycle.update({ where: { id: cycle.id }, data: { periodLabel } });
+        await tx.report.updateMany({
+          where: { scope: "COMPANY", companyId: cycle.companyId, periodStart, periodEnd },
+          data: { periodLabel },
+        });
+        await writeAuditEvent(tx, {
+          actorId: user.id,
+          action: "reporting_cycle.renamed",
+          targetType: "ReportingCycle",
+          targetId: cycle.id,
+          meta: { previousLabel: cycle.periodLabel, newLabel: periodLabel },
+        });
+      }
+    });
+  } catch (error) {
+    console.error("renameReportingPeriodAction failed", error);
+    return { error: GENERIC_ERROR };
+  }
+  return { error: null, success: true };
+}
+
 /**
  * Turns the financial statements ask on or off for a whole reporting
  * request (template + period), or changes its year -- for the startups in
