@@ -597,6 +597,7 @@ export interface Dictionary {
     approveAction: string;
     publishAction: string;
     noActionAvailable: string;
+    submittedValuesTitle: string;
     narrativeEnLabel: string;
     narrativeArLabel: string;
     narrativeKinds: {
@@ -1470,6 +1471,7 @@ export const en = {
     approveAction: "Approve",
     publishAction: "Publish",
     noActionAvailable: "No review action is available for this status.",
+    submittedValuesTitle: "Submitted data",
     narrativeEnLabel: "English",
     narrativeArLabel: "Arabic",
     narrativeKinds: {
@@ -2347,6 +2349,7 @@ export const ar = {
     approveAction: "اعتماد",
     publishAction: "نشر",
     noActionAvailable: "لا يوجد إجراء مراجعة متاح لهذه الحالة.",
+    submittedValuesTitle: "البيانات المقدَّمة",
     narrativeEnLabel: "الإنجليزية",
     narrativeArLabel: "العربية",
     narrativeKinds: {

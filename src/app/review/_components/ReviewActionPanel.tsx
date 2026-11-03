@@ -22,6 +22,7 @@ import {
 } from "../actions";
 import { ReviewMetricsEditForm } from "./ReviewMetricsEditForm";
 import { ReviewAttachmentsPanel } from "./ReviewAttachmentsPanel";
+import { ReviewSubmittedValues } from "./ReviewSubmittedValues";
 import type { AdminCompanyDTO, AdminCompanyPeriodData, AdminPeriodOption } from "@/lib/admin/dto";
 import type { NarrativeKind } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
@@ -64,6 +65,8 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
 
   const isEditableStatus =
     effectiveData?.status === "changes_requested" || effectiveData?.status === "submitted" || effectiveData?.status === "under_review";
+  // Approved reports keep showing what was submitted, read-only.
+  const showsMetrics = isEditableStatus || effectiveData?.status === "approved";
   // Keyed by the submissionId the fetch was actually for -- lets the
   // render below ignore a stale result instead of needing a synchronous
   // setState([]) in the effect body (which react-hooks/set-state-in-effect
@@ -73,7 +76,7 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
   );
 
   useEffect(() => {
-    if (!submissionId || !isEditableStatus) return;
+    if (!submissionId || !showsMetrics) return;
     let cancelled = false;
     getSubmissionMetricsForReviewAction(submissionId).then((result) => {
       if (!cancelled) setMetricsResult({ submissionId, metrics: result });
@@ -81,9 +84,9 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
     return () => {
       cancelled = true;
     };
-  }, [submissionId, isEditableStatus]);
+  }, [submissionId, showsMetrics]);
 
-  const metrics = isEditableStatus && metricsResult?.submissionId === submissionId ? metricsResult.metrics : [];
+  const metrics = showsMetrics && metricsResult?.submissionId === submissionId ? metricsResult.metrics : [];
 
   // Unlike metrics (editable only during changes_requested/submitted/under_review),
   // attachments are visible and uploadable at any review stage -- Falak
@@ -181,6 +184,10 @@ export function ReviewActionPanel({ company, period, effectiveData, headingRef }
               canSubmit={effectiveData.status === "changes_requested"}
               metrics={metrics}
             />
+          ) : null}
+
+          {effectiveData.status === "approved" && metrics.length > 0 ? (
+            <ReviewSubmittedValues metrics={metrics} currency={company.currency} />
           ) : null}
 
           <ReviewAttachmentsPanel submissionId={submissionId} attachments={attachments} />
