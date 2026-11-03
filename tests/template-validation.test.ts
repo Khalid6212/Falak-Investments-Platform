@@ -16,6 +16,12 @@ test("keys are normalised from whatever is typed, or made from the English label
   assert.equal(toMetricKey("  churn-rate % "), "churn_rate");
   assert.equal(toMetricKey("2024 Revenue"), "m_2024_revenue");
   assert.equal(toMetricKey("إيرادات"), "");
+  // Common measures get the keys the charts read.
+  assert.equal(toMetricKey("Total revenue"), "fin_revenue_total");
+  assert.equal(toMetricKey("B2B revenue (if applicable)"), "revenue_b2b");
+  assert.equal(toMetricKey("Burn rate"), "fin_burn_rate");
+  assert.equal(toMetricKey("Current cash balance"), "fin_cash_balance");
+  assert.equal(toMetricKey("Runway months"), "fin_runway_months");
 
   const { input } = validateNewTemplate(
     form({

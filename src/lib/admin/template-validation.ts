@@ -1,5 +1,6 @@
 import type { MetricDataType } from "@/generated/prisma/client";
 import type { FieldErrors, FormValues } from "@/lib/admin/entity-validation";
+import { standardMetricKey } from "@/lib/reporting/system-metric-keys";
 
 // Validation for the New Reporting Template form, one message per bad
 // field so only that field is highlighted.
@@ -10,7 +11,8 @@ const MAX_METRIC_ROWS = 40;
 
 /**
  * Turns whatever was typed (or, when left empty, the English label) into
- * a valid metric key: "Revenue B2B" -> "revenue_b2b".
+ * a valid metric key: "Revenue B2B" -> "revenue_b2b". A common measure
+ * gets the key the charts read: "Burn rate" -> "fin_burn_rate".
  */
 export function toMetricKey(input: string): string {
   const key = input
@@ -19,7 +21,7 @@ export function toMetricKey(input: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
   if (!key) return "";
-  return /^[a-z]/.test(key) ? key : `m_${key}`;
+  return /^[a-z]/.test(key) ? standardMetricKey(key) : `m_${key}`;
 }
 
 export interface TemplateMetricInput {

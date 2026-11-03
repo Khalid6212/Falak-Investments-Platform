@@ -41,9 +41,19 @@ function groupMetrics(metrics: SubmissionMetricFieldDTO[]) {
 interface MetricRowProps {
   label: string;
   value: ReactNode;
+  // Written answers sit under their label, reading from the start.
+  stacked?: boolean;
 }
 
-function MetricRow({ label, value }: MetricRowProps) {
+function MetricRow({ label, value, stacked }: MetricRowProps) {
+  if (stacked) {
+    return (
+      <div className="flex flex-col gap-1 border-b border-border-subtle py-1.5 text-sm last:border-0">
+        <dt className="text-muted-foreground">{label}</dt>
+        <dd className="min-w-0 break-words text-start text-foreground">{value}</dd>
+      </div>
+    );
+  }
   return (
     <div className="flex justify-between gap-3 border-b border-border-subtle py-1.5 text-sm last:border-0">
       <dt className="shrink-0 text-muted-foreground">{label}</dt>
@@ -145,6 +155,7 @@ export function MetricsBreakdown({ metrics, currency, revenue, previousRevenue, 
                     key={field.metricDefinitionId}
                     label={lang === "ar" ? field.labelAr : field.labelEn}
                     value={formatFieldValue(field)}
+                    stacked={field.dataType === "Text"}
                   />
                 ))}
               </dl>

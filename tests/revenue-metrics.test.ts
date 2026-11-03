@@ -10,8 +10,16 @@ function value(key: string, amount: number | null, isNa = false) {
   };
 }
 
-test("REVENUE_METRIC_KEYS covers both B2B and B2C", () => {
-  assert.deepEqual(REVENUE_METRIC_KEYS, ["revenue_b2b", "fin_revenue_b2c"]);
+test("REVENUE_METRIC_KEYS covers B2B, B2C and a reported total", () => {
+  assert.deepEqual(REVENUE_METRIC_KEYS, ["revenue_b2b", "fin_revenue_b2c", "fin_revenue_total"]);
+});
+
+test("a reported total is used only when neither B2B nor B2C is filled in", () => {
+  assert.equal(sumRevenueMetricValues([value("fin_revenue_total", 95)]), 95);
+  assert.equal(sumRevenueMetricValues([value("revenue_b2b", null, true), value("fin_revenue_total", 95)]), 95);
+  assert.equal(sumRevenueMetricValues([value("revenue_b2b", 100), value("fin_revenue_b2c", 60), value("fin_revenue_total", 160)]), 160);
+  assert.equal(sumRevenueMetricValues([value("revenue_b2b", 100), value("fin_revenue_total", 999)]), 100);
+  assert.equal(sumRevenueMetricValues([value("fin_revenue_total", null, true)]), null);
 });
 
 test("sums B2B + B2C when both present", () => {
