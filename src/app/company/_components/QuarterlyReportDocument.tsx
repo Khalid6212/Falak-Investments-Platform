@@ -57,6 +57,8 @@ const METRIC_ALIASES = {
   runway: RUNWAY_KEYS,
   grossMargin: ["fin_gross_margin", "gross_margin"],
   netMargin: ["fin_net_margin", "net_margin"],
+  revenueGrowth: ["fin_revenue_growth", "revenue_growth"],
+  ltv: ["cust_ltv", "ltv"],
   b2bClients: ["cust_b2b_clients", "b2b_clients", "b2b_clients_if_applicable"],
   b2cUsers: ["cust_b2c_users", "b2c_users", "b2c_users_if_applicable"],
   newCustomers: ["cust_new_customers", "new_customers", "new_customers_this_period"],
@@ -69,6 +71,16 @@ const METRIC_ALIASES = {
 };
 
 const NUMERIC_TYPES = new Set(["Currency", "Percent", "Number"]);
+
+type MetricRole = keyof typeof METRIC_ALIASES;
+const roleOf = (key: string) => (Object.keys(METRIC_ALIASES) as MetricRole[]).find((r) => METRIC_ALIASES[r].includes(key)) ?? null;
+
+// Amounts of money: shown in the company's currency even when a template
+// set them up as plain numbers.
+const MONEY_ROLES = new Set<MetricRole>(["cogs", "expenses", "cash", "burn", "netCashFlow", "arpu", "cac", "ltv"]);
+// Costs: startups enter them as positive or negative, so only the size
+// counts. Shown without colour; growth compares sizes.
+const COST_ROLES = new Set<MetricRole>(["cogs", "expenses", "burn", "cac"]);
 
 // Figures show without a minus sign: negative in red, positive in green.
 // QoQ growth keeps its sign (see GrowthValue).
@@ -84,11 +96,24 @@ function amount(value: number | null, format: (v: number) => string, naText: str
   return value === null ? naText : <Signed value={value}>{format(Math.abs(value))}</Signed>;
 }
 
+function numericValue(field: SubmissionMetricFieldDTO | undefined): number | null {
+  if (!field || !NUMERIC_TYPES.has(field.dataType) || field.isNa || field.value === null) return null;
+  const n = Number(field.value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function metricValue(field: SubmissionMetricFieldDTO | undefined, currency: Currency, lang: "en" | "ar", naText: string) {
   if (!field) return naText;
-  const n = Number(field.value);
-  if (NUMERIC_TYPES.has(field.dataType) && !field.isNa && field.value !== null && Number.isFinite(n)) {
-    return <Signed value={n}>{formatMetricValue({ ...field, value: String(Math.abs(n)) }, currency, lang) ?? ""}</Signed>;
+  const n = numericValue(field);
+  if (n !== null) {
+    const role = roleOf(field.key);
+    const size = Math.abs(n);
+    const text =
+      role && MONEY_ROLES.has(role) && field.dataType === "Number"
+        ? formatCurrency(size, currency, lang)
+        : (formatMetricValue({ ...field, value: String(size) }, currency, lang) ?? "");
+    if (role && COST_ROLES.has(role)) return <Num>{text}</Num>;
+    return <Signed value={n}>{text}</Signed>;
   }
   const text = formatMetricValue(field, currency, lang);
   return text === null ? naText : <Num>{text}</Num>;
@@ -135,6 +160,15 @@ function GrowthValue({ growth, good, lang, naText }: { growth: number | null; go
   );
 }
 
+// Growth keeps its sign: red when negative, green when positive.
+function SignedPercent({ value, lang }: { value: number; lang: "en" | "ar" }) {
+  return (
+    <span className={value < 0 ? "text-danger" : value > 0 ? "text-nebula-aqua" : ""}>
+      <Num>{signedPercent(value, lang)}</Num>
+    </span>
+  );
+}
+
 function signedPercent(value: number, lang: "en" | "ar"): string {
   const text = formatPercent(value, lang, 1);
   return value > 0 ? `+${text}` : text;
@@ -164,7 +198,7 @@ interface QuarterlyReportDocumentProps {
 export function QuarterlyReportDocument({ data, fromInvestorDashboard }: QuarterlyReportDocumentProps) {
   const { t, lang } = useLanguage();
   const isPrinting = useIsPrinting();
-  const { company, metrics, previousMetrics, revenue, previousRevenue, narratives } = data;
+  const { company, metrics, previousMetrics, revenue, previousRevenue, previousRevenueGrowth, narratives } = data;
 
   const narrativeByKind = new Map(narratives.map((n) => [n.kind, n]));
   const operationalUpdate = narrativeByKind.get("operational_update");
@@ -193,7 +227,7 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
   const netMargin = computeNetMargin(revenue, expenses) ?? reportedPercent("netMargin");
   const na = t.companyReport.naValueDisplay;
   const money = (v: number) => formatCurrency(v, company.currency, lang);
-  const pct = (v: number) => formatPercent(v, lang);
+  const pct = (v: number) => formatPercent(v, lang, 1);
   const revenueGrowth = percentChange(revenue, previousRevenue);
   const projection = computeRevenueProjection(revenue);
 
@@ -201,7 +235,7 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
   // when a template doesn't ask for them directly.
   const burnFor = (list: SubmissionMetricFieldDTO[], rev: number | null) =>
     deriveMonthlyBurn({
-      reportedBurn: num(list, "burn"),
+      reportedBurn: num(list, "burn") === null ? null : Math.abs(num(list, "burn")!),
       monthlyNetCashFlow: num(list, "netCashFlow"),
       quarterRevenue: rev,
       quarterExpenses: num(list, "expenses"),
@@ -224,7 +258,30 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
     const field = findMetric(metrics, key);
     const prevField = findMetric(previousMetrics ?? [], key);
     const label = lang === "ar" ? labelSource.labelAr : labelSource.labelEn;
-    const growth = percentChange(findNumericMetricValue(metrics, key), findNumericMetricValue(previousMetrics ?? [], key));
+    const role = roleOf(key);
+
+    // Revenue growth is worked out from the revenue figures, not taken as typed.
+    if (role === "revenueGrowth") {
+      return (
+        <Tr key={key}>
+          <Td>{label}</Td>
+          <Td>{revenueGrowth === null ? na : <SignedPercent value={revenueGrowth} lang={lang} />}</Td>
+          <Td>{previousRevenueGrowth === null ? na : <SignedPercent value={previousRevenueGrowth} lang={lang} />}</Td>
+          <Td className="font-medium">{na}</Td>
+        </Tr>
+      );
+    }
+
+    const current = numericValue(field);
+    const previous = numericValue(prevField);
+    // A change in a percentage (margin, churn) isn't a growth rate.
+    const isRate = labelSource.dataType === "Percent";
+    const isCost = role !== null && COST_ROLES.has(role);
+    const growth = isRate
+      ? null
+      : isCost
+        ? percentChange(current === null ? null : Math.abs(current), previous === null ? null : Math.abs(previous))
+        : percentChange(current, previous);
     const good = growth === null || growth === 0 ? null : LOWER_IS_BETTER.has(key) ? growth < 0 : growth > 0;
 
     return (
@@ -241,12 +298,13 @@ export function QuarterlyReportDocument({ data, fromInvestorDashboard }: Quarter
 
   function derivedRow(key: string, label: string, current: number | null, previous: number | null, format: (v: number) => string, lowerIsBetter: boolean) {
     const growth = percentChange(current, previous);
+    const show = (v: number | null) => (v === null ? na : lowerIsBetter ? <Num>{format(Math.abs(v))}</Num> : amount(v, format, na));
     const good = growth === null || growth === 0 ? null : lowerIsBetter ? growth < 0 : growth > 0;
     return (
       <Tr key={key}>
         <Td>{label}</Td>
-        <Td>{amount(current, format, na)}</Td>
-        <Td>{amount(previous, format, na)}</Td>
+        <Td>{show(current)}</Td>
+        <Td>{show(previous)}</Td>
         <Td className="font-medium">
           <GrowthValue growth={growth} good={good} lang={lang} naText={t.companyReport.naValueDisplay} />
         </Td>

@@ -4,6 +4,8 @@ import { requireCurrentUser } from "@/lib/auth/authorization";
 import { requireFalakRoleWithDepartmentScope } from "@/lib/auth/department-scope";
 import { ForbiddenError } from "@/lib/auth/authorization-errors";
 import { fetchSubmissionMetricFields } from "@/lib/reporting/metrics";
+import { normalizePercentUnits } from "@/lib/reporting/metric-format";
+import { percentChange } from "@/lib/reporting/computed-metrics";
 import { REVENUE_METRIC_KEYS, sumRevenueMetricValues } from "@/lib/reporting/revenue-metrics";
 import type { Currency, CustomerModel, FundingStage, NarrativeKind } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
@@ -41,6 +43,8 @@ export interface QuarterlyReportData {
   // data."
   previousMetrics: SubmissionMetricFieldDTO[] | null;
   previousRevenue: number | null;
+  // The prior period's own QoQ revenue growth (against the period before it).
+  previousRevenueGrowth: number | null;
   previousPeriodLabel: string | null;
   narratives: QuarterlyReportNarrativeDTO[];
   reportVersionId: string;
@@ -189,14 +193,16 @@ export async function getQuarterlyReportData(slug: string, periodKey: string): P
     if (!grant) throw new ForbiddenError();
   }
 
-  const metrics = await fetchSubmissionMetricFields(db, cycle.submission.id, cycle.templateId);
+  const metrics = normalizePercentUnits(await fetchSubmissionMetricFields(db, cycle.submission.id, cycle.templateId));
   const revenue = sumRevenueMetricValues(cycle.submission.metricValues);
 
   const previousCycle = cycleIndex > 0 ? company.cycles[cycleIndex - 1] : null;
   const previousMetrics = previousCycle?.submission
-    ? await fetchSubmissionMetricFields(db, previousCycle.submission.id, previousCycle.templateId)
+    ? normalizePercentUnits(await fetchSubmissionMetricFields(db, previousCycle.submission.id, previousCycle.templateId))
     : null;
   const previousRevenue = previousCycle?.submission ? sumRevenueMetricValues(previousCycle.submission.metricValues) : null;
+  const twoBackCycle = cycleIndex > 1 ? company.cycles[cycleIndex - 2] : null;
+  const twoBackRevenue = twoBackCycle?.submission ? sumRevenueMetricValues(twoBackCycle.submission.metricValues) : null;
 
   return {
     company: {
@@ -217,6 +223,7 @@ export async function getQuarterlyReportData(slug: string, periodKey: string): P
     revenue,
     previousMetrics,
     previousRevenue,
+    previousRevenueGrowth: percentChange(previousRevenue, twoBackRevenue),
     previousPeriodLabel: previousCycle?.periodLabel ?? null,
     narratives: version.narratives,
     reportVersionId: version.id,

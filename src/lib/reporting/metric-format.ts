@@ -38,7 +38,7 @@ export function formatMetricValue(field: SubmissionMetricFieldDTO, currency: Cur
     case "Number":
       return formatNumber(Number(field.value), lang);
     case "Percent":
-      return formatPercent(Number(field.value) / 100, lang);
+      return formatPercent(Number(field.value) / 100, lang, 1);
     case "Date":
       // Stored as YYYY-MM-DD; anything older that isn't shows as typed.
       return isIsoDay(field.value) ? formatDate(field.value, lang) : field.value;
@@ -48,4 +48,18 @@ export function formatMetricValue(field: SubmissionMetricFieldDTO, currency: Cur
     default:
       return field.value;
   }
+}
+
+/**
+ * Startups type percentages two ways: 84.5 for 84.5%, or 0.845. A
+ * submission whose percentages all sit within +/-2 is read as the second
+ * way and scaled to the first, so both display the same. Display only;
+ * the stored answers are unchanged.
+ */
+export function normalizePercentUnits(metrics: SubmissionMetricFieldDTO[]): SubmissionMetricFieldDTO[] {
+  const isAnswered = (m: SubmissionMetricFieldDTO) =>
+    m.dataType === "Percent" && !m.isNa && m.value !== null && Number.isFinite(Number(m.value));
+  const values = metrics.filter(isAnswered).map((m) => Number(m.value));
+  if (values.length === 0 || values.some((v) => Math.abs(v) > 2)) return metrics;
+  return metrics.map((m) => (isAnswered(m) ? { ...m, value: String(Math.round(Number(m.value) * 1e8) / 1e6) } : m));
 }

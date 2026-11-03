@@ -6,7 +6,7 @@ import { Num } from "@/components/ui/Num";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { formatPercent } from "@/lib/format";
 import { computeGrossMargin, computeNetMargin, percentChange } from "@/lib/reporting/computed-metrics";
-import { findNumericMetricValue, formatMetricValue } from "@/lib/reporting/metric-format";
+import { findNumericMetricValue, formatMetricValue, normalizePercentUnits } from "@/lib/reporting/metric-format";
 import type { Currency } from "@/generated/prisma/client";
 import type { SubmissionMetricFieldDTO } from "@/lib/reporting/dto";
 import type { CompanyMetricBenchmark } from "@/lib/admin/benchmarking";
@@ -79,8 +79,9 @@ interface MetricsBreakdownProps {
   benchmarks: CompanyMetricBenchmark[];
 }
 
-export function MetricsBreakdown({ metrics, currency, revenue, previousRevenue, benchmarks }: MetricsBreakdownProps) {
+export function MetricsBreakdown({ metrics: rawMetrics, currency, revenue, previousRevenue, benchmarks }: MetricsBreakdownProps) {
   const { t, lang } = useLanguage();
+  const metrics = normalizePercentUnits(rawMetrics);
 
   if (metrics.length === 0) {
     return null;
