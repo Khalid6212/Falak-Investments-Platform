@@ -53,7 +53,8 @@ export async function getInvestorPortfolioData(): Promise<InvestorPortfolioData>
     where: {
       investorId: { in: investorIds },
       revokedAt: null,
-      reportVersion: { report: { scope: "COMPANY", company: { archivedAt: null } } },
+      // An archived or deleted reporting cycle takes its report out of view.
+      reportVersion: { report: { scope: "COMPANY", company: { archivedAt: null } }, submissions: { some: { submission: { cycle: { archivedAt: null } } } } },
     },
     select: {
       investorId: true,

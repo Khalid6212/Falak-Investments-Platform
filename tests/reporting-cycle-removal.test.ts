@@ -97,13 +97,19 @@ test("an admin deletes a cycle by typing the startup's name, which frees the req
   assert.equal(stub.getAuditEvents()[0].action, "reporting_cycle.deleted");
 });
 
-test("a report published to investors can be neither archived nor deleted", async () => {
+test("a cycle whose report was published can still be archived and deleted, noted in the audit trail", async () => {
   setCurrentUser(REAL_USER);
-  const { stub, updates } = makeStub({ published: true });
-  setDbStub(stub);
-  assert.ok((await archiveReportingCycleAction({ error: null }, form({}))).error);
-  assert.ok((await deleteReportingCycleAction({ error: null }, form({ confirmName: "Estaie" }))).error);
-  assert.equal(updates.length, 0);
+  const archived = makeStub({ published: true, falakRoles: OPERATIONS_ROLE });
+  setDbStub(archived.stub);
+  assert.equal((await archiveReportingCycleAction({ error: null }, form({}))).success, true);
+  assert.ok(archived.updates[0].archivedAt instanceof Date);
+  assert.deepEqual(archived.stub.getAuditEvents()[0].meta, { publishedReport: true });
+
+  const deleted = makeStub({ published: true });
+  setDbStub(deleted.stub);
+  assert.equal((await deleteReportingCycleAction({ error: null }, form({ confirmName: "Estaie" }))).success, true);
+  assert.equal(deleted.updates[0].deletedKey, "cy_1");
+  assert.deepEqual(deleted.stub.getAuditEvents()[0].meta, { publishedReport: true });
 });
 
 test("a deleted cycle can't be restored", async () => {

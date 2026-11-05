@@ -78,7 +78,13 @@ export async function getAccessibleAttachment(attachmentId: string): Promise<Acc
     if (investorIds.length === 0) return null;
 
     const grant = await db.reportAccessGrant.findFirst({
-      where: { reportVersionId: attachment.reportVersion.id, investorId: { in: investorIds }, revokedAt: null },
+      where: {
+        reportVersionId: attachment.reportVersion.id,
+        investorId: { in: investorIds },
+        revokedAt: null,
+        // Not once the report's reporting cycle is archived or deleted.
+        reportVersion: { submissions: { some: { submission: { cycle: { archivedAt: null } } } } },
+      },
       select: { id: true },
     });
     return grant ? result : null;

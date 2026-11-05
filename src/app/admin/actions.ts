@@ -1941,7 +1941,6 @@ export async function deleteCompanyAction(_prevState: ActionState, formData: For
 // Archiving or deleting one startup's reporting cycle
 // ============================================================
 
-const PUBLISHED_CYCLE_ERROR = "This report has been published to investors, so it can't be archived or deleted.";
 
 /** Reads the cycle an archive/restore/delete names; published reports stay. */
 async function loadCycleForRemoval(cycleId: string) {
@@ -1987,7 +1986,6 @@ async function setCycleArchived(formData: FormData, archive: boolean): Promise<A
   const loaded = await loadCycleForRemoval(cycleId);
   if (!loaded) return { error: GENERIC_ERROR };
   if (!inDepartment(departments, loaded.cycle.company.department)) return { error: OUT_OF_DEPARTMENT };
-  if (archive && loaded.published) return { error: PUBLISHED_CYCLE_ERROR };
 
   try {
     await db.$transaction(async (tx) => {
@@ -1997,6 +1995,7 @@ async function setCycleArchived(formData: FormData, archive: boolean): Promise<A
         action: archive ? "reporting_cycle.archived" : "reporting_cycle.restored",
         targetType: "ReportingCycle",
         targetId: cycleId,
+        meta: loaded.published ? { publishedReport: true } : undefined,
       });
     });
   } catch (error) {
@@ -2028,7 +2027,6 @@ export async function deleteReportingCycleAction(_prevState: ActionState, formDa
   if (!cycleId) return { error: GENERIC_ERROR };
   const loaded = await loadCycleForRemoval(cycleId);
   if (!loaded) return { error: GENERIC_ERROR };
-  if (loaded.published) return { error: PUBLISHED_CYCLE_ERROR };
   if (readString(formData, "confirmName") !== loaded.cycle.company.nameEn.trim()) {
     return { error: CONFIRM_NAME_MISMATCH, fieldErrors: { confirmName: CONFIRM_NAME_MISMATCH } };
   }
@@ -2045,6 +2043,7 @@ export async function deleteReportingCycleAction(_prevState: ActionState, formDa
         action: "reporting_cycle.deleted",
         targetType: "ReportingCycle",
         targetId: cycleId,
+        meta: loaded.published ? { publishedReport: true } : undefined,
       });
     });
   } catch (error) {
